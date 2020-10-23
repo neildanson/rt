@@ -264,7 +264,7 @@ fn main() {
 
         let camera = create_camera(position, look_at, inverse_height);
         for (y, row) in image.chunks_mut(width).enumerate() {
-            //
+            //make par
             for (x, pixel) in row.iter_mut().enumerate() {
                 let ray = get_ray(
                     position,

@@ -1,21 +1,22 @@
-use pixel_canvas::{Canvas, Color, input::MouseState};
 use glam::Vec3;
+use pixel_canvas::{input::MouseState, Canvas, Color};
+use rayon::prelude::*;
 
 #[derive(Copy, Clone)]
-struct Ray { 
-    position : Vec3,
-    direction : Vec3
+struct Ray {
+    position: Vec3,
+    direction: Vec3,
 }
 
-struct Intersection { 
-    ray : Ray,
-    distance : f32,
-    normal : Vec3
+struct Intersection {
+    ray: Ray,
+    distance: f32,
+    normal: Vec3,
 }
 
 struct Sphere {
-    center : Vec3,
-    radius : f32
+    center: Vec3,
+    radius: f32,
 }
 
 struct Light {
@@ -29,7 +30,7 @@ struct Camera {
     up: Vec3,
 }
 
-fn normal(sphere : &Sphere, position : Vec3) -> Vec3 {
+fn normal(sphere: &Sphere, position: Vec3) -> Vec3 {
     (position - sphere.center).normalize()
 }
 
@@ -39,11 +40,7 @@ fn create_camera(position: Vec3, look_at: Vec3, inverse_height: f32) -> Camera {
     let right = forward.cross(down).normalize() * 1.5f32 * inverse_height;
     let up = forward.cross(right).normalize() * 1.5f32 * inverse_height;
 
-    Camera {
-        forward,
-        right,
-        up,
-    }
+    Camera { forward, right, up }
 }
 
 fn recenter_x(x: f32, half_width: f32) -> f32 {
@@ -54,13 +51,14 @@ fn recenter_y(y: f32, half_height: f32) -> f32 {
     -(y - half_height)
 }
 
-fn get_ray(position: Vec3,
-               x: f32,
-               y: f32,
-               half_width: f32,
-               half_height: f32,
-               camera: Camera)
-               -> Ray {
+fn get_ray(
+    position: Vec3,
+    x: f32,
+    y: f32,
+    half_width: f32,
+    half_height: f32,
+    camera: &Camera,
+) -> Ray {
     let right = camera.right * recenter_x(x, half_width);
     let up = camera.up * recenter_y(y, half_height);
     Ray {
@@ -69,7 +67,7 @@ fn get_ray(position: Vec3,
     }
 }
 
-fn to_color(vec : Vec3) -> Color {
+fn to_color(vec: Vec3) -> Color {
     let (x, y, z) = vec.into();
     let red = x.min(1.0).max(0.0) * 255.0;
     let green = y.min(1.0).max(0.0) * 255.0;
@@ -79,6 +77,17 @@ fn to_color(vec : Vec3) -> Color {
         r: red as u8,
         g: green as u8,
         b: blue as u8,
+    }
+}
+
+fn dirty_intersects(ray: Ray, object: &Sphere) -> bool {
+    let diff = object.center - ray.position;
+    let v = diff.dot(ray.direction);
+    if v < 0.0 {
+        false
+    } else {
+        let distance_squared = object.radius.powi(2) - (diff.dot(diff) - v.powi(2));
+        distance_squared >= 0.0
     }
 }
 
@@ -96,17 +105,15 @@ fn object_intersects(ray: Ray, object: &Sphere) -> Option<Intersection> {
             Some(Intersection {
                 ray,
                 distance,
-                normal : normal(object, ray.position + (ray.direction * distance))
-                //object: object,
+                normal: normal(object, ray.position + (ray.direction * distance)), //object: object,
             })
             // Normal = Vector3.Normalize(ray.Position + (ray.Direction * distance) - position); Object = s })
         }
     }
-
 }
 
 fn any_intersection(ray: Ray, objects: &[Sphere]) -> bool {
-    objects.iter().any(|object| object_intersects(ray, object).is_some())
+    objects.iter().any(|object| dirty_intersects(ray, object))
 }
 
 fn nearest_intersection(ray: Ray, objects: &[Sphere]) -> Option<Intersection> {
@@ -123,19 +130,18 @@ fn nearest_intersection(ray: Ray, objects: &[Sphere]) -> Option<Intersection> {
                 }
             }
             (_, _) => None,
-
         }
     })
 }
 
-fn apply_light(position: Vec3,
-               normal: Vec3,
-               objects: &[Sphere],
-               light: &Light,
-               ray_direction: Vec3,
-               base_color: Vec3)
-               -> Vec3 {
-
+fn apply_light(
+    position: Vec3,
+    normal: Vec3,
+    objects: &[Sphere],
+    light: &Light,
+    ray_direction: Vec3,
+    base_color: Vec3,
+) -> Vec3 {
     let light_dir = (light.position - position).normalize();
     let ray = Ray {
         position,
@@ -164,35 +170,36 @@ fn apply_light(position: Vec3,
     }
 }
 
-
-fn apply_lighting(position: Vec3,
-                  normal: Vec3,
-                  objects: &[Sphere],
-                  lights: &[Light],
-                  ray_direction: Vec3,
-                  base_color: Vec3)
-                  -> Vec3 {
+fn apply_lighting(
+    position: Vec3,
+    normal: Vec3,
+    objects: &[Sphere],
+    lights: &[Light],
+    ray_direction: Vec3,
+    base_color: Vec3,
+) -> Vec3 {
     lights.iter().fold(Vec3::zero(), |color, light| {
         color + apply_light(position, normal, objects, &light, ray_direction, base_color)
     })
 }
 
-
 fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], _depth: i32) -> Vec3 {
     let intersection = nearest_intersection(ray, objects);
     match intersection {
         Some(intersection) => {
-            let hit_point = intersection.ray.position +
-                            (intersection.ray.direction * intersection.distance);
+            let hit_point =
+                intersection.ray.position + (intersection.ray.direction * intersection.distance);
 
             let normal = intersection.normal;
-            let color = Vec3::new(0.5,0.5,0.5);
-            let color = apply_lighting(hit_point,
-                                       normal, // intersection.normal,
-                                       objects,
-                                       lights,
-                                       intersection.ray.direction,
-                                       color);
+            let color = Vec3::new(0.5, 0.5, 0.5);
+            let color = apply_lighting(
+                hit_point,
+                normal, // intersection.normal,
+                objects,
+                lights,
+                intersection.ray.direction,
+                color,
+            );
             //if depth < 3 {
             //   let ray = Ray {
             //        position: hit_point,
@@ -201,7 +208,7 @@ fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], _depth: i32) -> Vec3 {
             //    let newcolor = trace(ray, objects, lights, depth + 1);
             //    color + newcolor
             //} else {
-                color
+            color
             //}
         }
         None => Vec3::zero(),
@@ -209,8 +216,8 @@ fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], _depth: i32) -> Vec3 {
 }
 
 fn main() {
-    let width = 800;
-    let height = 600;
+    let width = 1024;
+    let height = 768;
     let inverse_height = 1.0f32 / height as f32;
     let half_height = height as f32 / 2.0f32;
     let half_width = width as f32 / 2.0f32;
@@ -222,35 +229,51 @@ fn main() {
         .show_ms(true)
         .input(MouseState::handle_input);
 
+    let spheres = vec![
+        Sphere {
+            center: Vec3::new(0.0, 2.0, -5.0),
+            radius: 1.0,
+        },
+        Sphere {
+            center: Vec3::new(2.0, 0.0, -5.0),
+            radius: 1.0,
+        },
+        Sphere {
+            center: Vec3::new(0.0, -1003.0, 0.0),
+            radius: 1000.0,
+        },
+    ];
 
-    let spheres = vec!(
-            Sphere { center : Vec3::new(0.0, 2.0, -5.0), radius : 1.0 },            
-            Sphere { center : Vec3::new(2.0, 0.0, -5.0), radius : 1.0 },
-            Sphere { center : Vec3::new(0.0, -1003.0, 0.0), radius : 1000.0 }
-    );
-    
-   let lights = vec! (
-       Light { position: Vec3::new(-3.0, 3.0,-1.0), color: Vec3::new(0.5, 0.0, 0.0) },
-       Light { position: Vec3::new(3.0, 3.0,-1.0), color: Vec3::new(0.5, 0.5, 0.5) },
-    );
+    let lights = vec![
+        Light {
+            position: Vec3::new(-3.0, 3.0, -1.0),
+            color: Vec3::new(0.5, 0.0, 0.0),
+        },
+        Light {
+            position: Vec3::new(3.0, 3.0, -1.0),
+            color: Vec3::new(0.5, 0.5, 0.5),
+        },
+    ];
 
     canvas.render(move |mouse, image| {
         let width = image.width() as usize;
+        let look_x = (half_width - mouse.x as f32) / 500f32;
+        let look_y = (half_height - mouse.y as f32) / 500f32;
+
+        let look_at = Vec3::new(look_x, look_y, -1f32);
+
+        let camera = create_camera(position, look_at, inverse_height);
         for (y, row) in image.chunks_mut(width).enumerate() {
+            //
             for (x, pixel) in row.iter_mut().enumerate() {
-                let look_x = (half_width - mouse.x as f32) / 1000f32;
-                let look_y = (half_height - mouse.y as f32 ) / 1000f32;
-
-                let look_at = Vec3::new(look_x, look_y, -1f32);
-
-                let camera = create_camera(position, look_at, inverse_height);
-
-                let ray = get_ray(position,
+                let ray = get_ray(
+                    position,
                     x as f32,
                     y as f32,
                     half_width,
                     half_height,
-                    camera);
+                    &camera,
+                );
 
                 let color = trace(ray, &spheres, &lights, 0);
 

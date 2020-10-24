@@ -1,6 +1,7 @@
 use glam::Vec3A;
-use pixel_canvas::{input::MouseState, Canvas, Color};
+use pixel_canvas::{input::MouseState, Canvas, Color, Image, XY};
 use rayon::prelude::*;
+use std::ops::IndexMut;
 
 #[derive(Copy, Clone)]
 struct Ray {
@@ -26,22 +27,22 @@ struct Light {
 }
 
 struct Camera {
-    position : Vec3A,
+    position: Vec3A,
     forward: Vec3A,
     right: Vec3A,
     up: Vec3A,
 
-    //private 
-    half_width : f32,
-    half_height : f32
+    //private
+    half_width: f32,
+    half_height: f32,
 }
 
 impl Camera {
-    fn get_ray(&self, x : f32, y : f32) -> Ray {
+    fn get_ray(&self, x: f32, y: f32) -> Ray {
         let right = self.right * recenter_x(x, self.half_width);
         let up = self.up * recenter_y(y, self.half_height);
         Ray {
-            position : self.position,
+            position: self.position,
             direction: (right + up + self.forward).normalize(),
         }
     }
@@ -51,13 +52,26 @@ fn normal(sphere: &Sphere, position: Vec3A) -> Vec3A {
     (position - sphere.center).normalize()
 }
 
-fn create_camera(position: Vec3A, look_at: Vec3A, inverse_height: f32, half_width : f32, half_height : f32) -> Camera {
+fn create_camera(
+    position: Vec3A,
+    look_at: Vec3A,
+    inverse_height: f32,
+    half_width: f32,
+    half_height: f32,
+) -> Camera {
     let forward = (look_at - position).normalize();
     let down = Vec3A::unit_y();
     let right = forward.cross(down).normalize() * 1.5f32 * inverse_height;
     let up = forward.cross(right).normalize() * 1.5f32 * inverse_height;
 
-    Camera { position, forward, right, up, half_width, half_height }
+    Camera {
+        position,
+        forward,
+        right,
+        up,
+        half_width,
+        half_height,
+    }
 }
 
 fn recenter_x(x: f32, half_width: f32) -> f32 {
@@ -202,7 +216,7 @@ fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], depth: i32) -> Vec3A {
                 color,
             );
             if depth < 3 {
-               let ray = Ray {
+                let ray = Ray {
                     position: hit_point,
                     direction: normal,
                 };
@@ -216,16 +230,29 @@ fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], depth: i32) -> Vec3A {
     }
 }
 
-fn trace_col(
-    x: usize,
-    y: usize,
+fn trace_region(
+    min_x: usize,
+    min_y: usize,
+    max_x: usize,
+    max_y: usize,
     camera: &Camera,
     objects: &[Sphere],
     lights: &[Light],
-) -> Vec3A {
-    let ray = camera.get_ray(
-        x as f32,
-        y as f32);
+) -> Vec<(usize, usize, Vec3A)> {
+    let mut result = Vec::with_capacity((max_x - min_x) * (max_y - min_y));
+    for y in min_y..max_y {
+        for x in min_x..max_x {
+            let ray = camera.get_ray(x as f32, y as f32);
+
+            result.push((x, y, trace(ray, objects, lights, 0)));
+        }
+    }
+
+    result
+}
+
+fn trace_col(x: usize, y: usize, camera: &Camera, objects: &[Sphere], lights: &[Light]) -> Vec3A {
+    let ray = camera.get_ray(x as f32, y as f32);
 
     trace(ray, objects, lights, 0)
 }
@@ -244,7 +271,7 @@ fn main() {
         .show_ms(true)
         .input(MouseState::handle_input);
 
-    let spheres = vec![
+    let objects = vec![
         Sphere {
             center: Vec3A::new(0.0, 2.0, -5.0),
             radius: 1.0,
@@ -271,29 +298,28 @@ fn main() {
     ];
 
     canvas.render(move |mouse, image| {
-        let width = image.width() as usize;
         let look_x = (half_width - mouse.x as f32) / 200f32;
         let look_y = (half_height - mouse.y as f32) / 200f32;
         let look_at = Vec3A::new(look_x, look_y, -1f32);
 
         let camera = create_camera(position, look_at, inverse_height, half_width, half_height);
-        for (y, row) in image.chunks_mut(width).enumerate() {
-            //make par
-            let column = (0..width)
-                .into_par_iter()
-                .map(|x| {
-                    trace_col(
-                        x,
-                        y,
-                        &camera,
-                        &spheres,
-                        &lights,
-                    )
-                })
-                .collect::<Vec<_>>();
+        let work: Vec<(usize, usize, usize, usize)> = vec![
+            (0, 0, 1024, 191),
+            (0, 191, 1024, 384),
+            (0, 384, 1024, 573),
+            (0, 573, 1024, 768),
+        ];
+        let result = work
+            .par_iter()
+            .map(|(min_x, min_y, max_x, max_y)| {
+                trace_region(*min_x, *min_y, *max_x, *max_y, &camera, &objects, &lights)
+            })
+            .collect::<Vec<_>>();
 
-            for (x, pixel) in row.iter_mut().enumerate() {
-                *pixel = to_color(column[x]);
+        for r in result {
+            for (x, y, col) in r {
+                let color = image.index_mut(XY(x, y));
+                *color = to_color(col);
             }
         }
     });

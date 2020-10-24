@@ -1,42 +1,42 @@
-use glam::Vec3;
+use glam::Vec3A;
 use pixel_canvas::{input::MouseState, Canvas, Color};
 use rayon::prelude::*;
 
 #[derive(Copy, Clone)]
 struct Ray {
-    position: Vec3,
-    direction: Vec3,
+    position: Vec3A,
+    direction: Vec3A,
 }
 
 struct Intersection {
     ray: Ray,
     distance: f32,
-    normal: Vec3,
+    normal: Vec3A,
 }
 
 struct Sphere {
-    center: Vec3,
+    center: Vec3A,
     radius: f32,
 }
 
 struct Light {
-    position: Vec3,
-    color: Vec3,
+    position: Vec3A,
+    color: Vec3A,
 }
 
 struct Camera {
-    forward: Vec3,
-    right: Vec3,
-    up: Vec3,
+    forward: Vec3A,
+    right: Vec3A,
+    up: Vec3A,
 }
 
-fn normal(sphere: &Sphere, position: Vec3) -> Vec3 {
+fn normal(sphere: &Sphere, position: Vec3A) -> Vec3A {
     (position - sphere.center).normalize()
 }
 
-fn create_camera(position: Vec3, look_at: Vec3, inverse_height: f32) -> Camera {
+fn create_camera(position: Vec3A, look_at: Vec3A, inverse_height: f32) -> Camera {
     let forward = (look_at - position).normalize();
-    let down = Vec3::unit_y();
+    let down = Vec3A::unit_y();
     let right = forward.cross(down).normalize() * 1.5f32 * inverse_height;
     let up = forward.cross(right).normalize() * 1.5f32 * inverse_height;
 
@@ -52,7 +52,7 @@ fn recenter_y(y: f32, half_height: f32) -> f32 {
 }
 
 fn get_ray(
-    position: Vec3,
+    position: Vec3A,
     x: f32,
     y: f32,
     half_width: f32,
@@ -67,7 +67,7 @@ fn get_ray(
     }
 }
 
-fn to_color(vec: Vec3) -> Color {
+fn to_color(vec: Vec3A) -> Color {
     let (x, y, z) = vec.into();
     let red = x.min(1.0).max(0.0) * 255.0;
     let green = y.min(1.0).max(0.0) * 255.0;
@@ -135,13 +135,13 @@ fn nearest_intersection(ray: Ray, objects: &[Sphere]) -> Option<Intersection> {
 }
 
 fn apply_light(
-    position: Vec3,
-    normal: Vec3,
+    position: Vec3A,
+    normal: Vec3A,
     objects: &[Sphere],
     light: &Light,
-    ray_direction: Vec3,
-    base_color: Vec3,
-) -> Vec3 {
+    ray_direction: Vec3A,
+    base_color: Vec3A,
+) -> Vec3A {
     let light_dir = (light.position - position).normalize();
     let ray = Ray {
         position,
@@ -149,13 +149,13 @@ fn apply_light(
     };
     let is_in_shadow = any_intersection(ray, objects);
     if is_in_shadow {
-        Vec3::zero()
+        Vec3A::zero()
     } else {
         let illum = light_dir.dot(normal);
         let lcolor = if illum > 0.0 {
             light.color * illum
         } else {
-            Vec3::zero()
+            Vec3A::zero()
         };
         let diffuse_color = lcolor * base_color;
         let dot = normal.dot(ray_direction);
@@ -164,26 +164,26 @@ fn apply_light(
         let specular_result = if specular > 0.0 {
             light.color * (specular.powi(50))
         } else {
-            Vec3::zero()
+            Vec3A::zero()
         };
         diffuse_color + specular_result
     }
 }
 
 fn apply_lighting(
-    position: Vec3,
-    normal: Vec3,
+    position: Vec3A,
+    normal: Vec3A,
     objects: &[Sphere],
     lights: &[Light],
-    ray_direction: Vec3,
-    base_color: Vec3,
-) -> Vec3 {
-    lights.iter().fold(Vec3::zero(), |color, light| {
+    ray_direction: Vec3A,
+    base_color: Vec3A,
+) -> Vec3A {
+    lights.iter().fold(Vec3A::zero(), |color, light| {
         color + apply_light(position, normal, objects, &light, ray_direction, base_color)
     })
 }
 
-fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], _depth: i32) -> Vec3 {
+fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], _depth: i32) -> Vec3A {
     let intersection = nearest_intersection(ray, objects);
     match intersection {
         Some(intersection) => {
@@ -191,7 +191,7 @@ fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], _depth: i32) -> Vec3 {
                 intersection.ray.position + (intersection.ray.direction * intersection.distance);
 
             let normal = intersection.normal;
-            let color = Vec3::new(0.5, 0.5, 0.5);
+            let color = Vec3A::new(0.5, 0.5, 0.5);
             let color = apply_lighting(
                 hit_point,
                 normal, // intersection.normal,
@@ -211,8 +211,21 @@ fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], _depth: i32) -> Vec3 {
             color
             //}
         }
-        None => Vec3::zero(),
+        None => Vec3A::zero(),
     }
+}
+
+fn trace_col(position : Vec3A, x : usize, y : usize, half_width : f32, half_height : f32, camera : &Camera, objects : &[Sphere], lights : &[Light]) -> Vec3A {
+    let ray = get_ray(
+        position,
+        x as f32,
+        y as f32,
+        half_width,
+        half_height,
+        &camera,
+    );
+
+    trace(ray, objects, lights, 0)
 }
 
 fn main() {
@@ -221,7 +234,7 @@ fn main() {
     let inverse_height = 1.0f32 / height as f32;
     let half_height = height as f32 / 2.0f32;
     let half_width = width as f32 / 2.0f32;
-    let position = Vec3::zero();
+    let position = Vec3A::zero();
 
     let canvas = Canvas::new(width, height)
         .title("Raytrace")
@@ -231,27 +244,27 @@ fn main() {
 
     let spheres = vec![
         Sphere {
-            center: Vec3::new(0.0, 2.0, -5.0),
+            center: Vec3A::new(0.0, 2.0, -5.0),
             radius: 1.0,
         },
         Sphere {
-            center: Vec3::new(2.0, 0.0, -5.0),
+            center: Vec3A::new(2.0, 0.0, -5.0),
             radius: 1.0,
         },
         Sphere {
-            center: Vec3::new(0.0, -1003.0, 0.0),
+            center: Vec3A::new(0.0, -1003.0, 0.0),
             radius: 1000.0,
         },
     ];
 
     let lights = vec![
         Light {
-            position: Vec3::new(-3.0, 3.0, -1.0),
-            color: Vec3::new(0.5, 0.0, 0.0),
+            position: Vec3A::new(-3.0, 3.0, -1.0),
+            color: Vec3A::new(0.5, 0.0, 0.0),
         },
         Light {
-            position: Vec3::new(3.0, 3.0, -1.0),
-            color: Vec3::new(0.5, 0.5, 0.5),
+            position: Vec3A::new(3.0, 3.0, -1.0),
+            color: Vec3A::new(0.5, 0.5, 0.5),
         },
     ];
 
@@ -260,13 +273,15 @@ fn main() {
         let look_x = (half_width - mouse.x as f32) / 500f32;
         let look_y = (half_height - mouse.y as f32) / 500f32;
 
-        let look_at = Vec3::new(look_x, look_y, -1f32);
+        let look_at = Vec3A::new(look_x, look_y, -1f32);
 
         let camera = create_camera(position, look_at, inverse_height);
         for (y, row) in image.chunks_mut(width).enumerate() {
             //make par
+            let column = (0..width).into_par_iter().map(|x| trace_col(position, x, y, half_width, half_height, &camera, &spheres, &lights)).collect::<Vec<_>>();
+
             for (x, pixel) in row.iter_mut().enumerate() {
-                let ray = get_ray(
+            /*    let ray = get_ray(
                     position,
                     x as f32,
                     y as f32,
@@ -275,9 +290,9 @@ fn main() {
                     &camera,
                 );
 
-                let color = trace(ray, &spheres, &lights, 0);
+                let color = trace(ray, &spheres, &lights, 0);*/
 
-                *pixel = to_color(color);
+                *pixel = to_color(column[x]);
             }
         }
     });

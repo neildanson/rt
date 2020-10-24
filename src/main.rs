@@ -8,6 +8,7 @@ struct Ray {
     direction: Vec3A,
 }
 
+#[derive(Copy, Clone)]
 struct Intersection {
     ray: Ray,
     distance: f32,
@@ -124,9 +125,9 @@ fn nearest_intersection(ray: Ray, objects: &[Sphere]) -> Option<Intersection> {
             (None, Some(i)) => Some(i),
             (Some(a), Some(b)) => {
                 if a.distance < b.distance {
-                    Some(a)
+                    intersection
                 } else {
-                    Some(b)
+                    i
                 }
             }
             (_, _) => None,
@@ -161,12 +162,12 @@ fn apply_light(
         let dot = normal.dot(ray_direction);
         let ray_direction = (ray_direction - (normal * (2.0 * dot))).normalize();
         let specular = light_dir.dot(ray_direction);
-        //let specular_result = if specular > 0.0 {
-        //    light.color * (specular.powi(50))
-        //} else {
-        //    Vec3A::zero()
-        //};
-        diffuse_color// + specular_result
+        let specular_result = if specular > 0.0 {
+            light.color * (specular.powi(50))
+        } else {
+            Vec3A::zero()
+        };
+        diffuse_color + specular_result
     }
 }
 

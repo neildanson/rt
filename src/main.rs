@@ -25,22 +25,38 @@ struct Light {
 }
 
 struct Camera {
+    position : Vec3A,
     forward: Vec3A,
     right: Vec3A,
     up: Vec3A,
+
+    //private 
+    half_width : f32,
+    half_height : f32
+}
+
+impl Camera {
+    fn get_ray(&self, x : f32, y : f32) -> Ray {
+        let right = self.right * recenter_x(x, self.half_width);
+        let up = self.up * recenter_y(y, self.half_height);
+        Ray {
+            position : self.position,
+            direction: (right + up + self.forward).normalize(),
+        }
+    }
 }
 
 fn normal(sphere: &Sphere, position: Vec3A) -> Vec3A {
     (position - sphere.center).normalize()
 }
 
-fn create_camera(position: Vec3A, look_at: Vec3A, inverse_height: f32) -> Camera {
+fn create_camera(position: Vec3A, look_at: Vec3A, inverse_height: f32, half_width : f32, half_height : f32) -> Camera {
     let forward = (look_at - position).normalize();
     let down = Vec3A::unit_y();
     let right = forward.cross(down).normalize() * 1.5f32 * inverse_height;
     let up = forward.cross(right).normalize() * 1.5f32 * inverse_height;
 
-    Camera { forward, right, up }
+    Camera { position, forward, right, up, half_width, half_height }
 }
 
 fn recenter_x(x: f32, half_width: f32) -> f32 {
@@ -48,23 +64,7 @@ fn recenter_x(x: f32, half_width: f32) -> f32 {
 }
 
 fn recenter_y(y: f32, half_height: f32) -> f32 {
-    -(y - half_height)
-}
-
-fn get_ray(
-    position: Vec3A,
-    x: f32,
-    y: f32,
-    half_width: f32,
-    half_height: f32,
-    camera: &Camera,
-) -> Ray {
-    let right = camera.right * recenter_x(x, half_width);
-    let up = camera.up * recenter_y(y, half_height);
-    Ray {
-        position,
-        direction: (right + up + camera.forward).normalize(),
-    }
+    half_height - y
 }
 
 fn to_color(vec: Vec3A) -> Color {
@@ -183,7 +183,7 @@ fn apply_lighting(
     })
 }
 
-fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], _depth: i32) -> Vec3A {
+fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], depth: i32) -> Vec3A {
     let intersection = nearest_intersection(ray, objects);
     match intersection {
         Some(intersection) => {
@@ -200,30 +200,31 @@ fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], _depth: i32) -> Vec3A {
                 intersection.ray.direction,
                 color,
             );
-            //if depth < 3 {
-            //   let ray = Ray {
-            //        position: hit_point,
-            //        direction: normal,
-            //    };
-            //    let newcolor = trace(ray, objects, lights, depth + 1);
-            //    color + newcolor
-            //} else {
-            color
-            //}
+            if depth < 3 {
+               let ray = Ray {
+                    position: hit_point,
+                    direction: normal,
+                };
+                let newcolor = trace(ray, objects, lights, depth + 1);
+                color + newcolor
+            } else {
+                color
+            }
         }
         None => Vec3A::zero(),
     }
 }
 
-fn trace_col(position : Vec3A, x : usize, y : usize, half_width : f32, half_height : f32, camera : &Camera, objects : &[Sphere], lights : &[Light]) -> Vec3A {
-    let ray = get_ray(
-        position,
+fn trace_col(
+    x: usize,
+    y: usize,
+    camera: &Camera,
+    objects: &[Sphere],
+    lights: &[Light],
+) -> Vec3A {
+    let ray = camera.get_ray(
         x as f32,
-        y as f32,
-        half_width,
-        half_height,
-        &camera,
-    );
+        y as f32);
 
     trace(ray, objects, lights, 0)
 }
@@ -270,28 +271,27 @@ fn main() {
 
     canvas.render(move |mouse, image| {
         let width = image.width() as usize;
-        let look_x = (half_width - mouse.x as f32) / 500f32;
-        let look_y = (half_height - mouse.y as f32) / 500f32;
-
+        let look_x = (half_width - mouse.x as f32) / 200f32;
+        let look_y = (half_height - mouse.y as f32) / 200f32;
         let look_at = Vec3A::new(look_x, look_y, -1f32);
 
-        let camera = create_camera(position, look_at, inverse_height);
+        let camera = create_camera(position, look_at, inverse_height, half_width, half_height);
         for (y, row) in image.chunks_mut(width).enumerate() {
             //make par
-            let column = (0..width).into_par_iter().map(|x| trace_col(position, x, y, half_width, half_height, &camera, &spheres, &lights)).collect::<Vec<_>>();
+            let column = (0..width)
+                .into_par_iter()
+                .map(|x| {
+                    trace_col(
+                        x,
+                        y,
+                        &camera,
+                        &spheres,
+                        &lights,
+                    )
+                })
+                .collect::<Vec<_>>();
 
             for (x, pixel) in row.iter_mut().enumerate() {
-            /*    let ray = get_ray(
-                    position,
-                    x as f32,
-                    y as f32,
-                    half_width,
-                    half_height,
-                    &camera,
-                );
-
-                let color = trace(ray, &spheres, &lights, 0);*/
-
                 *pixel = to_color(column[x]);
             }
         }

@@ -1,7 +1,8 @@
 use glam::Vec3A;
-use pixel_canvas::{input::MouseState, Canvas, Color, Image, XY};
+use pixel_canvas::{input::MouseState, Canvas, Color, XY};
 use rayon::prelude::*;
 use std::ops::IndexMut;
+use std::cmp::Ordering;
 
 #[derive(Copy, Clone)]
 struct Ray {
@@ -14,6 +15,29 @@ struct Intersection {
     ray: Ray,
     distance: f32,
     normal: Vec3A,
+}
+
+impl Ord for Intersection {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.distance <= other.distance {
+            Ordering::Less
+        } else {
+            Ordering::Greater
+        }
+    }
+}
+
+impl PartialOrd for Intersection {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Eq for Intersection {}
+
+impl PartialEq for Intersection {
+    fn eq(&self, other: &Self) -> bool {
+        self.distance == other.distance
+    }
 }
 
 struct Sphere {
@@ -132,21 +156,7 @@ fn any_intersection(ray: Ray, objects: &[Sphere]) -> bool {
 }
 
 fn nearest_intersection(ray: Ray, objects: &[Sphere]) -> Option<Intersection> {
-    objects.iter().fold(None, |intersection, object| {
-        let i = object_intersects(ray, object);
-        match (intersection, i) {
-            (Some(intersection), None) => Some(intersection),
-            (None, Some(i)) => Some(i),
-            (Some(a), Some(b)) => {
-                if a.distance < b.distance {
-                    intersection
-                } else {
-                    i
-                }
-            }
-            (_, _) => None,
-        }
-    })
+    objects.iter().filter_map(|object| { object_intersects(ray, object) }).min()
 }
 
 fn apply_light(
@@ -249,12 +259,6 @@ fn trace_region(
     }
 
     result
-}
-
-fn trace_col(x: usize, y: usize, camera: &Camera, objects: &[Sphere], lights: &[Light]) -> Vec3A {
-    let ray = camera.get_ray(x as f32, y as f32);
-
-    trace(ray, objects, lights, 0)
 }
 
 fn main() {

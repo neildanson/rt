@@ -72,6 +72,7 @@ impl Camera {
     }
 }
 
+#[inline]
 fn normal(sphere: &Sphere, position: Vec3A) -> Vec3A {
     (position - sphere.center).normalize()
 }
@@ -98,10 +99,12 @@ fn create_camera(
     }
 }
 
+#[inline]
 fn recenter_x(x: f32, half_width: f32) -> f32 {
     x - half_width
 }
 
+#[inline]
 fn recenter_y(y: f32, half_height: f32) -> f32 {
     half_height - y
 }

@@ -2,43 +2,14 @@ use glam::Vec3A;
 use pixel_canvas::{input::MouseState, Canvas, Color, XY};
 use rayon::prelude::*;
 use std::ops::IndexMut;
-use std::cmp::Ordering;
 
-#[derive(Copy, Clone)]
-struct Ray {
-    position: Vec3A,
-    direction: Vec3A,
-}
+mod ray;
+mod intersection;
+mod camera;
 
-#[derive(Copy, Clone)]
-struct Intersection {
-    ray: Ray,
-    distance: f32,
-    normal: Vec3A,
-}
-
-impl Ord for Intersection {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if self.distance <= other.distance {
-            Ordering::Less
-        } else {
-            Ordering::Greater
-        }
-    }
-}
-
-impl PartialOrd for Intersection {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Eq for Intersection {}
-
-impl PartialEq for Intersection {
-    fn eq(&self, other: &Self) -> bool {
-        self.distance == other.distance
-    }
-}
+use ray::Ray;
+use intersection::Intersection;
+use camera::Camera;
 
 struct Sphere {
     center: Vec3A,
@@ -50,64 +21,14 @@ struct Light {
     color: Vec3A,
 }
 
-struct Camera {
-    position: Vec3A,
-    forward: Vec3A,
-    right: Vec3A,
-    up: Vec3A,
 
-    //private
-    half_width: f32,
-    half_height: f32,
-}
-
-impl Camera {
-    fn get_ray(&self, x: f32, y: f32) -> Ray {
-        let right = self.right * recenter_x(x, self.half_width);
-        let up = self.up * recenter_y(y, self.half_height);
-        Ray {
-            position: self.position,
-            direction: (right + up + self.forward).normalize(),
-        }
-    }
-}
 
 #[inline]
 fn normal(sphere: &Sphere, position: Vec3A) -> Vec3A {
     (position - sphere.center).normalize()
 }
 
-fn create_camera(
-    position: Vec3A,
-    look_at: Vec3A,
-    inverse_height: f32,
-    half_width: f32,
-    half_height: f32,
-) -> Camera {
-    let forward = (look_at - position).normalize();
-    let down = Vec3A::unit_y();
-    let right = forward.cross(down).normalize() * 1.5f32 * inverse_height;
-    let up = forward.cross(right).normalize() * 1.5f32 * inverse_height;
 
-    Camera {
-        position,
-        forward,
-        right,
-        up,
-        half_width,
-        half_height,
-    }
-}
-
-#[inline]
-fn recenter_x(x: f32, half_width: f32) -> f32 {
-    x - half_width
-}
-
-#[inline]
-fn recenter_y(y: f32, half_height: f32) -> f32 {
-    half_height - y
-}
 
 fn to_color(vec: Vec3A) -> Color {
     let (x, y, z) = vec.into();
@@ -122,6 +43,7 @@ fn to_color(vec: Vec3A) -> Color {
     }
 }
 
+//Used for shadows only
 fn dirty_intersects(ray: Ray, object: &Sphere) -> bool {
     let diff = object.center - ray.position;
     let v = diff.dot(ray.direction);
@@ -254,8 +176,9 @@ fn trace_region(
 ) -> Vec<(usize, usize, Vec3A)> {
     let mut result = Vec::with_capacity((max_x - min_x) * (max_y - min_y));
     for y in min_y..max_y {
+        let yf = y as f32;
         for x in min_x..max_x {
-            let ray = camera.get_ray(x as f32, y as f32);
+            let ray = camera.get_ray(x as f32, yf);
 
             result.push((x, y, trace(ray, objects, lights, 0)));
         }
@@ -309,7 +232,7 @@ fn main() {
         let look_y = (half_height - mouse.y as f32) / 200f32;
         let look_at = Vec3A::new(look_x, look_y, -1f32);
 
-        let camera = create_camera(position, look_at, inverse_height, half_width, half_height);
+        let camera = Camera::create_camera(position, look_at, inverse_height, half_width, half_height);
         let work: Vec<(usize, usize, usize, usize)> = vec![
             (0, 0, 1024, 191),
             (0, 191, 1024, 384),

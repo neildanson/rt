@@ -6,21 +6,17 @@ use std::ops::IndexMut;
 mod ray;
 mod intersection;
 mod camera;
+mod sphere;
 
 use ray::Ray;
 use intersection::Intersection;
 use camera::Camera;
-
-struct Sphere {
-    center: Vec3A,
-    radius: f32,
-}
+use sphere::Sphere;
 
 struct Light {
     position: Vec3A,
     color: Vec3A,
 }
-
 
 
 #[inline]
@@ -50,7 +46,7 @@ fn dirty_intersects(ray: Ray, object: &Sphere) -> bool {
     if v < 0.0 {
         false
     } else {
-        let distance_squared = object.radius.powi(2) - (diff.dot(diff) - v.powi(2));
+        let distance_squared = object.radius_squared - (diff.dot(diff) - v.powi(2));
         distance_squared >= 0.0
     }
 }
@@ -61,7 +57,7 @@ fn object_intersects(ray: Ray, object: &Sphere) -> Option<Intersection> {
     if v < 0.0 {
         None
     } else {
-        let distance_squared = object.radius.powi(2) - (diff.dot(diff) - v.powi(2));
+        let distance_squared = object.radius_squared - (diff.dot(diff) - v.powi(2));
         if distance_squared < 0.0 {
             None
         } else {
@@ -102,12 +98,12 @@ fn apply_light(
         Vec3A::zero()
     } else {
         let illum = light_dir.dot(normal);
-        let lcolor = if illum > 0.0 {
-            light.color * illum
+        let diffuse_color = if illum > 0.0 {
+            light.color * illum * base_color
         } else {
             Vec3A::zero()
         };
-        let diffuse_color = lcolor * base_color;
+        
         let dot = normal.dot(ray_direction);
         let ray_direction = (ray_direction - (normal * (2.0 * dot))).normalize();
         let specular = light_dir.dot(ray_direction);
@@ -128,9 +124,16 @@ fn apply_lighting(
     ray_direction: Vec3A,
     base_color: Vec3A,
 ) -> Vec3A {
-    lights.iter().fold(Vec3A::zero(), |color, light| {
-        color + apply_light(position, normal, objects, &light, ray_direction, base_color)
-    })
+    //lights.iter().map(|light| apply_light(position, normal, objects, &light, ray_direction, base_color)).sum()
+    
+    let mut color = Vec3A::zero();
+    for light in lights {
+        color += apply_light(position, normal, objects, &light, ray_direction, base_color)
+    }
+    color
+    //lights.iter().fold(Vec3A::zero(), |color, light| {
+    //    color + apply_light(position, normal, objects, &light, ray_direction, base_color)
+    //})
 }
 
 fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], depth: i32) -> Vec3A {
@@ -202,18 +205,15 @@ fn main() {
         .input(MouseState::handle_input);
 
     let objects = vec![
-        Sphere {
-            center: Vec3A::new(0.0, 2.0, -5.0),
-            radius: 1.0,
-        },
-        Sphere {
-            center: Vec3A::new(2.0, 0.0, -5.0),
-            radius: 1.0,
-        },
-        Sphere {
-            center: Vec3A::new(0.0, -1003.0, 0.0),
-            radius: 1000.0,
-        },
+        Sphere::new(
+            Vec3A::new(0.0, 2.0, -5.0),
+            1.0),
+        Sphere::new(
+            Vec3A::new(2.0, 0.0, -5.0),
+            1.0),
+        Sphere::new(
+            Vec3A::new(0.0, -1003.0, 0.0),
+            1000.0),
     ];
 
     let lights = vec![

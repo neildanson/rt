@@ -17,7 +17,6 @@ pub struct Camera {
     right: Vec3A,
     up: Vec3A,
 
-    //private
     half_width: f32,
     half_height: f32,
 }

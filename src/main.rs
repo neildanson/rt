@@ -18,14 +18,7 @@ struct Light {
     color: Vec3A,
 }
 
-
 #[inline]
-fn normal(sphere: &Sphere, position: Vec3A) -> Vec3A {
-    (position - sphere.center).normalize()
-}
-
-
-
 fn to_color(vec: Vec3A) -> Color {
     let (x, y, z) = vec.into();
     let red = x.min(1.0).max(0.0) * 255.0;
@@ -65,7 +58,7 @@ fn object_intersects(ray: Ray, object: &Sphere) -> Option<Intersection> {
             Some(Intersection {
                 ray,
                 distance,
-                normal: normal(object, ray.position + (ray.direction * distance)), //object: object,
+                normal: object.normal(ray.position + (ray.direction * distance)), //object: object,
             })
             // Normal = Vector3.Normalize(ray.Position + (ray.Direction * distance) - position); Object = s })
         }
@@ -108,7 +101,7 @@ fn apply_light(
         let ray_direction = (ray_direction - (normal * (2.0 * dot))).normalize();
         let specular = light_dir.dot(ray_direction);
         let specular_result = if specular > 0.0 {
-            light.color * (specular.powi(50))
+            light.color * specular.powi(50)
         } else {
             Vec3A::zero()
         };
@@ -191,8 +184,8 @@ fn trace_region(
 }
 
 fn main() {
-    let width = 1024;
-    let height = 768;
+    let width = 800;
+    let height = 600;
     let inverse_height = 1.0f32 / height as f32;
     let half_height = height as f32 / 2.0f32;
     let half_width = width as f32 / 2.0f32;
@@ -223,9 +216,16 @@ fn main() {
         },
         Light {
             position: Vec3A::new(3.0, 3.0, -1.0),
-            color: Vec3A::new(0.5, 0.5, 0.5),
+            color: Vec3A::new(0.7, 0.7, 0.7),
         },
     ];
+
+    let work: Vec<(usize, usize, usize, usize)> = vec![
+            (0, 0, 800, 150),
+            (0, 150, 800, 300),
+            (0, 300, 800, 450),
+            (0, 450, 800, 600),
+        ];
 
     canvas.render(move |mouse, image| {
         let look_x = (half_width - mouse.x as f32) / 200f32;
@@ -233,12 +233,7 @@ fn main() {
         let look_at = Vec3A::new(look_x, look_y, -1f32);
 
         let camera = Camera::create_camera(position, look_at, inverse_height, half_width, half_height);
-        let work: Vec<(usize, usize, usize, usize)> = vec![
-            (0, 0, 1024, 191),
-            (0, 191, 1024, 384),
-            (0, 384, 1024, 573),
-            (0, 573, 1024, 768),
-        ];
+        
         let result = work
             .par_iter()
             .map(|(min_x, min_y, max_x, max_y)| {

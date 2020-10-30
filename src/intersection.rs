@@ -1,8 +1,7 @@
 use std::cmp::Ordering;
 use glam::Vec3A;
 
-use crate::Ray;
-use crate::Sphere;
+use crate::{Ray, Shape, Sphere};
 
 #[derive(Copy, Clone)]
 pub struct Intersection {

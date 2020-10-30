@@ -8,10 +8,12 @@ mod ray;
 mod intersection;
 mod camera;
 mod sphere;
+mod shape;
 
 use ray::Ray;
 use intersection::Intersection;
 use camera::Camera;
+use shape::Shape;
 use sphere::Sphere;
 
 const AMBIENT_LIGHT : Vec3A = const_vec3a!([0.5,0.5,0.5]);

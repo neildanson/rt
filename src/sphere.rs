@@ -1,5 +1,5 @@
 use glam::Vec3A;
-use crate::{Intersection, Ray};
+use crate::{Intersection, Ray, Shape};
 
 #[derive(Copy, Clone)]
 pub struct Sphere {
@@ -12,11 +12,14 @@ impl Sphere {
     pub fn new (center : Vec3A, radius : f32) -> Sphere {
         Sphere { center, radius, radius_squared : radius.powi(2) }
     }
-    pub fn normal(&self, position: Vec3A) -> Vec3A {
+}
+
+impl Shape for Sphere {
+    fn normal(&self, position: Vec3A) -> Vec3A {
         (position - self.center).normalize()
     }
 
-    pub fn intersects(&self, ray: Ray) -> Option<Intersection> {
+    fn intersects(&self, ray: Ray) -> Option<Intersection> {
         let diff = self.center - ray.position;
         let v = diff.dot(ray.direction);
         if v < 0.0 {

@@ -1,22 +1,25 @@
-
-use glam::{const_vec3a,Vec3A};
+use glam::{const_vec3a, Vec3A};
 use pixel_canvas::{input::MouseState, Canvas, Color, XY};
 use rayon::prelude::*;
 use std::ops::IndexMut;
 
-mod ray;
-mod intersection;
+mod aabb;
 mod camera;
-mod sphere;
+mod intersection;
+mod node;
+mod ray;
 mod shape;
+mod sphere;
 
-use ray::Ray;
-use intersection::Intersection;
+use aabb::AABB;
 use camera::Camera;
+use intersection::Intersection;
+use node::Node;
+use ray::Ray;
 use shape::Shape;
 use sphere::Sphere;
 
-const AMBIENT_LIGHT : Vec3A = const_vec3a!([0.5,0.5,0.5]);
+const AMBIENT_LIGHT: Vec3A = const_vec3a!([0.5, 0.5, 0.5]);
 
 struct Light {
     position: Vec3A,
@@ -37,20 +40,25 @@ fn to_color(vec: Vec3A) -> Color {
     }
 }
 
-fn any_intersection(ray: Ray, objects: &[Sphere]) -> bool {
-    objects.iter().any(|object| { object.intersects(ray).is_some() })
+fn any_intersection(ray: Ray, nodes: &[Node]) -> bool {
+    nodes
+        .iter()
+        .any(|nodes| nodes.intersects(ray).is_some())
 }
 
-fn nearest_intersection(ray: Ray, objects: &[Sphere]) -> Option<Intersection> {
-    objects.iter().filter_map(|object| { object.intersects(ray) }).min()
+fn nearest_intersection(ray: Ray, nodes: &[Node]) -> Option<Intersection> {
+    nodes
+        .iter()
+        .filter_map(|node| node.intersects(ray))
+        .min()
 }
 
 fn apply_light(
     position: Vec3A,
     normal: Vec3A,
-    objects: &[Sphere],
+    objects: &[Node],
     light: &Light,
-    ray_direction: Vec3A
+    ray_direction: Vec3A,
 ) -> Vec3A {
     let light_dir = (light.position - position).normalize();
     let ray = Ray {
@@ -67,7 +75,7 @@ fn apply_light(
         } else {
             Vec3A::zero()
         };
-        
+
         let dot = normal.dot(ray_direction);
         let ray_direction = (ray_direction - (normal * (2.0 * dot))).normalize();
         let specular = light_dir.dot(ray_direction);
@@ -83,10 +91,10 @@ fn apply_light(
 fn apply_lighting(
     position: Vec3A,
     normal: Vec3A,
-    objects: &[Sphere],
+    objects: &[Node],
     lights: &[Light],
     ray_direction: Vec3A,
-) -> Vec3A {    
+) -> Vec3A {
     let mut color = Vec3A::zero();
     for light in lights {
         color += apply_light(position, normal, objects, &light, ray_direction)
@@ -94,7 +102,7 @@ fn apply_lighting(
     color
 }
 
-fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], depth: i32) -> Vec3A {
+fn trace(ray: Ray, objects: &[Node], lights: &[Light], depth: i32) -> Vec3A {
     let intersection = nearest_intersection(ray, objects);
     match intersection {
         Some(intersection) => {
@@ -106,7 +114,7 @@ fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], depth: i32) -> Vec3A {
                 normal, // intersection.normal,
                 objects,
                 lights,
-                intersection.ray.direction
+                intersection.ray.direction,
             );
             if depth < 3 {
                 let ray = Ray {
@@ -129,7 +137,7 @@ fn trace_region(
     max_x: usize,
     max_y: usize,
     camera: &Camera,
-    objects: &[Sphere],
+    objects: &[Node],
     lights: &[Light],
 ) -> Vec<(usize, usize, Vec3A)> {
     let mut result = Vec::with_capacity((max_x - min_x) * (max_y - min_y));
@@ -159,16 +167,18 @@ fn main() {
         .show_ms(true)
         .input(MouseState::handle_input);
 
-    let objects = vec![
-        Sphere::new(
-            Vec3A::new(0.0, 2.0, -5.0),
-            1.0),
-        Sphere::new(
-            Vec3A::new(2.0, 0.0, -5.0),
-            1.0),
-        Sphere::new(
-            Vec3A::new(0.0, -1003.0, 0.0),
-            1000.0),
+    let scene = vec![
+        Node::new(
+            AABB::new(Vec3A::new(-1.0, -1.0, -6.0), Vec3A::new(3.0, 3.0, 0.0)),
+            vec![
+                Sphere::new(Vec3A::new(0.0, 2.0, -5.0), 1.0),
+                Sphere::new(Vec3A::new(2.0, 0.0, -5.0), 1.0),
+            ],
+        ),
+        Node::new(
+            AABB::new(Vec3A::new(-1000.0, -2000.0, -1000.0), Vec3A::new(1000.0, 0.0, 1000.0)),
+            vec![Sphere::new(Vec3A::new(0.0, -1003.0, 0.0), 1000.0)],
+        ),
     ];
 
     let lights = vec![
@@ -183,23 +193,24 @@ fn main() {
     ];
 
     let work: Vec<(usize, usize, usize, usize)> = vec![
-            (0, 0, 800, 150),
-            (0, 150, 800, 300),
-            (0, 300, 800, 450),
-            (0, 450, 800, 600),
-        ];
+        (0, 0, 800, 150),
+        (0, 150, 800, 300),
+        (0, 300, 800, 450),
+        (0, 450, 800, 600),
+    ];
 
     canvas.render(move |mouse, image| {
         let look_x = (half_width - mouse.x as f32) / 200f32;
         let look_y = (half_height - mouse.y as f32) / 200f32;
         let look_at = Vec3A::new(look_x, look_y, -1f32);
 
-        let camera = Camera::create_camera(position, look_at, inverse_height, half_width, half_height);
-        
+        let camera =
+            Camera::create_camera(position, look_at, inverse_height, half_width, half_height);
+
         let result = work
             .par_iter()
             .map(|(min_x, min_y, max_x, max_y)| {
-                trace_region(*min_x, *min_y, *max_x, *max_y, &camera, &objects, &lights)
+                trace_region(*min_x, *min_y, *max_x, *max_y, &camera, &scene, &lights)
             })
             .collect::<Vec<_>>();
 

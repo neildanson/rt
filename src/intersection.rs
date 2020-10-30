@@ -1,5 +1,5 @@
-use std::cmp::Ordering;
 use glam::Vec3A;
+use std::cmp::Ordering;
 
 use crate::{Ray, Shape, Sphere};
 
@@ -7,17 +7,17 @@ use crate::{Ray, Shape, Sphere};
 pub struct Intersection {
     pub ray: Ray,
     distance_squared: f32,
-    v:f32,
+    v: f32,
     pub object: Sphere,
 }
 
 impl Intersection {
-    pub fn new(ray:Ray, distance_squared : f32, v:f32, object:Sphere) -> Intersection {
+    pub fn new(ray: Ray, distance_squared: f32, v: f32, object: Sphere) -> Intersection {
         Intersection {
             ray,
             distance_squared,
             v,
-            object
+            object,
         }
     }
 
@@ -25,13 +25,12 @@ impl Intersection {
         self.v - self.distance_squared.sqrt()
     }
 
-    pub fn normal(&self, hit_point:Vec3A) -> Vec3A {
+    pub fn normal(&self, hit_point: Vec3A) -> Vec3A {
         self.object.normal(hit_point)
     }
 
     pub fn hit_point(&self) -> Vec3A {
         self.ray.position + (self.ray.direction * self.distance())
-
     }
 }
 

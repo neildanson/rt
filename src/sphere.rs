@@ -1,16 +1,20 @@
-use glam::Vec3A;
 use crate::{Intersection, Ray, Shape};
+use glam::Vec3A;
 
 #[derive(Copy, Clone)]
 pub struct Sphere {
     pub center: Vec3A,
     pub radius: f32,
-    pub radius_squared: f32
+    pub radius_squared: f32,
 }
 
-impl Sphere { 
-    pub fn new (center : Vec3A, radius : f32) -> Sphere {
-        Sphere { center, radius, radius_squared : radius.powi(2) }
+impl Sphere {
+    pub fn new(center: Vec3A, radius: f32) -> Sphere {
+        Sphere {
+            center,
+            radius,
+            radius_squared: radius.powi(2),
+        }
     }
 }
 
@@ -29,7 +33,7 @@ impl Shape for Sphere {
             if distance_squared < 0.0 {
                 None
             } else {
-                Some(Intersection::new(ray, distance_squared,v, *self))
+                Some(Intersection::new(ray, distance_squared, v, *self))
             }
         }
     }

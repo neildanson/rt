@@ -1,5 +1,5 @@
-use glam::Vec3A;
 use crate::Ray;
+use glam::Vec3A;
 
 #[inline]
 fn recenter_x(x: f32, half_width: f32) -> f32 {
@@ -42,7 +42,7 @@ impl Camera {
         let down = Vec3A::unit_y();
         let right = forward.cross(down).normalize() * 1.5f32 * inverse_height;
         let up = forward.cross(right).normalize() * 1.5f32 * inverse_height;
-    
+
         Camera {
             position,
             forward,
@@ -53,4 +53,3 @@ impl Camera {
         }
     }
 }
-

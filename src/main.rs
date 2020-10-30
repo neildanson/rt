@@ -10,6 +10,7 @@ mod node;
 mod ray;
 mod shape;
 mod sphere;
+mod bounds;
 
 use aabb::AABB;
 use camera::Camera;
@@ -18,6 +19,7 @@ use node::Node;
 use ray::Ray;
 use shape::Shape;
 use sphere::Sphere;
+use bounds::Bounds;
 
 const AMBIENT_LIGHT: Vec3A = const_vec3a!([0.5, 0.5, 0.5]);
 
@@ -176,7 +178,7 @@ fn main() {
             ],
         ),
         Node::new(
-            AABB::new(Vec3A::new(-1000.0, -2000.0, -1000.0), Vec3A::new(1000.0, 0.0, 1000.0)),
+            AABB::new(Vec3A::new(-1000.0, -10.0, -1000.0), Vec3A::new(1000.0, 0.0, 1000.0)),
             vec![Sphere::new(Vec3A::new(0.0, -1003.0, 0.0), 1000.0)],
         ),
     ];

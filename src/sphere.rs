@@ -1,4 +1,4 @@
-use crate::{Intersection, Ray, Shape};
+use crate::{Intersection, Ray, Shape, Bounds};
 use glam::Vec3A;
 
 #[derive(Copy, Clone)]
@@ -36,5 +36,17 @@ impl Shape for Sphere {
                 Some(Intersection::new(ray, distance_squared, v, *self))
             }
         }
+    }
+}
+
+impl Bounds for Sphere {
+    fn mins(&self) -> Vec3A {
+        let radiusV = Vec3A::splat(self.radius);
+        self.center - radiusV
+    }
+
+    fn maxs(&self) -> Vec3A {
+        let radiusV = Vec3A::splat(self.radius);
+        self.center + radiusV
     }
 }

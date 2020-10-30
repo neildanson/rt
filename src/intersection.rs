@@ -22,12 +22,17 @@ impl Intersection {
         }
     }
 
-    pub fn distance(&self) -> f32{
+    fn distance(&self) -> f32 {
         self.v - self.distance_squared.sqrt()
     }
 
-    pub fn normal(&self) -> Vec3A {
-        self.object.normal(self.ray.position + (self.ray.direction * self.distance()))
+    pub fn normal(&self, hit_point:Vec3A) -> Vec3A {
+        self.object.normal(hit_point)
+    }
+
+    pub fn hit_point(&self) -> Vec3A {
+        self.ray.position + (self.ray.direction * self.distance())
+
     }
 }
 

@@ -3,9 +3,9 @@ use glam::Vec3A;
 
 #[derive(Copy, Clone)]
 pub struct Sphere {
-    pub center: Vec3A,
-    pub radius: f32,
-    pub radius_squared: f32,
+    center: Vec3A,
+    radius: f32,
+    radius_squared: f32,
 }
 
 impl Sphere {
@@ -41,12 +41,12 @@ impl Shape for Sphere {
 
 impl Bounds for Sphere {
     fn mins(&self) -> Vec3A {
-        let radiusV = Vec3A::splat(self.radius);
-        self.center - radiusV
+        let radius = Vec3A::splat(self.radius);
+        self.center - radius
     }
 
     fn maxs(&self) -> Vec3A {
-        let radiusV = Vec3A::splat(self.radius);
-        self.center + radiusV
+        let radius = Vec3A::splat(self.radius);
+        self.center + radius
     }
 }

@@ -1,4 +1,4 @@
-use crate::{Intersection, Ray};
+use crate::Ray;
 use glam::Vec3A;
 use std::mem::swap;
 
@@ -6,7 +6,7 @@ pub trait Bounds {
     fn mins (&self) -> Vec3A;
     fn maxs (&self) -> Vec3A;
 
-    fn intersects(&self, ray: Ray) -> bool {
+    fn intersects_bounds(&self, ray: Ray) -> bool {
         let min = (self.mins() - ray.position) / ray.direction;
         let max = (self.maxs() - ray.position) / ray.direction;
 

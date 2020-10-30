@@ -6,16 +6,16 @@ pub struct Node {
 }
 
 impl Node {
-    fn any_intersection(&self, ray: Ray) -> bool {
-        self.objects
-            .iter()
-            .any(|object| Shape::intersects(object, ray).is_some())
-    }
+    //fn any_intersection(&self, ray: Ray) -> bool {
+    //    self.objects
+    //        .iter()
+    //        .any(|object| object.intersects(ray).is_some())
+    //}
 
     fn nearest_intersection(&self, ray: Ray) -> Option<Intersection> {
         self.objects
             .iter()
-            .filter_map(|object| Shape::intersects(object, ray))
+            .filter_map(|object| object.intersects(ray))
             .min()
     }
 
@@ -25,7 +25,7 @@ impl Node {
     }
 
     pub fn intersects(&self, ray: Ray) -> Option<Intersection> {
-        if self.aabb.intersects(ray) {
+        if self.aabb.intersects_bounds(ray) {
             self.nearest_intersection(ray)
         } else {
             None

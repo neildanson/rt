@@ -171,10 +171,11 @@ fn main() {
 
     let scene = vec![
         Node::new(
-            AABB::new(Vec3A::new(-1.0, -1.0, -6.0), Vec3A::new(3.0, 3.0, 0.0)),
+            AABB::new(Vec3A::new(-1.0, -1.0, -8.0), Vec3A::new(3.0, 3.0, 0.0)),
             vec![
                 Sphere::new(Vec3A::new(0.0, 2.0, -5.0), 1.0),
                 Sphere::new(Vec3A::new(2.0, 0.0, -5.0), 1.0),
+                Sphere::new(Vec3A::new(2.0, 0.0, -7.0), 1.0),
             ],
         ),
         Node::new(

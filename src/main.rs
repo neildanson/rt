@@ -44,33 +44,12 @@ fn dirty_intersects(ray: Ray, object: &Sphere) -> bool {
     }
 }
 
-fn object_intersects(ray: Ray, object: &Sphere) -> Option<Intersection> {
-    let diff = object.center - ray.position;
-    let v = diff.dot(ray.direction);
-    if v < 0.0 {
-        None
-    } else {
-        let distance_squared = object.radius_squared - (diff.dot(diff) - v.powi(2));
-        if distance_squared < 0.0 {
-            None
-        } else {
-            let distance = v - distance_squared.sqrt();
-            Some(Intersection {
-                ray,
-                distance,
-                normal: object.normal(ray.position + (ray.direction * distance)), //object: object,
-            })
-            // Normal = Vector3.Normalize(ray.Position + (ray.Direction * distance) - position); Object = s })
-        }
-    }
-}
-
 fn any_intersection(ray: Ray, objects: &[Sphere]) -> bool {
-    objects.iter().any(|object| dirty_intersects(ray, object))
+    objects.iter().any(|object| { object.intersects(ray).is_some() })
 }
 
 fn nearest_intersection(ray: Ray, objects: &[Sphere]) -> Option<Intersection> {
-    objects.iter().filter_map(|object| { object_intersects(ray, object) }).min()
+    objects.iter().filter_map(|object| { object.intersects(ray) }).min()
 }
 
 fn apply_light(
@@ -134,9 +113,9 @@ fn trace(ray: Ray, objects: &[Sphere], lights: &[Light], depth: i32) -> Vec3A {
     match intersection {
         Some(intersection) => {
             let hit_point =
-                intersection.ray.position + (intersection.ray.direction * intersection.distance);
+                intersection.ray.position + (intersection.ray.direction * intersection.distance());
 
-            let normal = intersection.normal;
+            let normal = intersection.normal();
             let color = Vec3A::new(0.5, 0.5, 0.5);
             let color = apply_lighting(
                 hit_point,

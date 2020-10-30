@@ -2,17 +2,38 @@ use std::cmp::Ordering;
 use glam::Vec3A;
 
 use crate::Ray;
+use crate::Sphere;
 
 #[derive(Copy, Clone)]
 pub struct Intersection {
     pub ray: Ray,
-    pub distance: f32,
-    pub normal: Vec3A,
+    distance_squared: f32,
+    v:f32,
+    pub object: Sphere,
+}
+
+impl Intersection {
+    pub fn new(ray:Ray, distance_squared : f32, v:f32, object:Sphere) -> Intersection {
+        Intersection {
+            ray,
+            distance_squared,
+            v,
+            object
+        }
+    }
+
+    pub fn distance(&self) -> f32{
+        self.v - self.distance_squared.sqrt()
+    }
+
+    pub fn normal(&self) -> Vec3A {
+        self.object.normal(self.ray.position + (self.ray.direction * self.distance()))
+    }
 }
 
 impl Ord for Intersection {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.distance <= other.distance {
+        if self.distance_squared <= other.distance_squared {
             Ordering::Less
         } else {
             Ordering::Greater
@@ -29,6 +50,6 @@ impl Eq for Intersection {}
 
 impl PartialEq for Intersection {
     fn eq(&self, other: &Self) -> bool {
-        self.distance == other.distance
+        self.distance_squared == other.distance_squared
     }
 }

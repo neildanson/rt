@@ -30,11 +30,9 @@ struct Light {
 
 #[inline]
 fn to_color(vec: Vec3A) -> Color {
-    let (x, y, z) = vec.into();
-    let red = x.min(1.0).max(0.0) * 255.0;
-    let green = y.min(1.0).max(0.0) * 255.0;
-    let blue = z.min(1.0).max(0.0) * 255.0;
-
+    //let (x, y, z) = vec.into();
+    let rgb = vec.min(Vec3A::one()).max(Vec3A::zero()) * 255.0;
+    let (red,green,blue) = rgb.into();
     Color {
         r: red as u8,
         g: green as u8,

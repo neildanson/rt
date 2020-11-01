@@ -160,6 +160,11 @@ fn main() {
     let half_width = width as f32 / 2.0f32;
     let position = Vec3A::new(0.0,2.0,0.0);
 
+    #[cfg(vec3a_sse2)]
+    {
+        println("SSE2");
+    }
+
     let canvas = Canvas::new(width, height)
         .title("Raytrace")
         .state(MouseState::new())
@@ -183,12 +188,17 @@ fn main() {
 
     let lights = vec![
         Light {
-            position: Vec3A::new(-3.0, 3.0, -1.0),
+            position: Vec3A::new(-3.0, 3.0, 1.0),
             color: Vec3A::new(0.5, 0.0, 0.0),
         },
         Light {
-            position: Vec3A::new(3.0, 3.0, -1.0),
-            color: Vec3A::new(0.7, 0.7, 0.7),
+            position: Vec3A::new(3.0, 3.0, 1.0),
+            color: Vec3A::new(0.0, 0.4, 0.0),
+        },
+
+        Light {
+            position: Vec3A::new(0.0, 3.0, -1.0),
+            color: Vec3A::new(0.0, 0.0, 0.5),
         },
     ];
 

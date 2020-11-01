@@ -7,8 +7,9 @@ pub trait Bounds {
     fn maxs (&self) -> Vec3A;
 
     fn intersects_bounds(&self, ray: Ray) -> bool {
-        let min = (self.mins() - ray.position) / ray.direction;
-        let max = (self.maxs() - ray.position) / ray.direction;
+        let inv_direction = ray.direction.recip();
+        let min = (self.mins() - ray.position) * inv_direction;
+        let max = (self.maxs() - ray.position) * inv_direction;
 
         let (mut minx,mut miny,mut minz) = min.into();
         let (mut maxx,mut maxy,mut maxz) = max.into();

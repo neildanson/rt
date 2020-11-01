@@ -30,7 +30,6 @@ struct Light {
 
 #[inline]
 fn to_color(vec: Vec3A) -> Color {
-    //let (x, y, z) = vec.into();
     let rgb = vec.min(Vec3A::one()).max(Vec3A::zero()) * 255.0;
     let (red,green,blue) = rgb.into();
     Color {
@@ -159,7 +158,7 @@ fn main() {
     let inverse_height = 1.0f32 / height as f32;
     let half_height = height as f32 / 2.0f32;
     let half_width = width as f32 / 2.0f32;
-    let position = Vec3A::zero();
+    let position = Vec3A::new(0.0,2.0,0.0);
 
     let canvas = Canvas::new(width, height)
         .title("Raytrace")
@@ -169,15 +168,15 @@ fn main() {
 
     let scene = vec![
         Node::new(
-            AABB::new(Vec3A::new(-1.0, -1.0, -8.0), Vec3A::new(3.0, 3.0, 0.0)),
+            //AABB::new(Vec3A::new(-6.0, 0.0, -5.0), Vec3A::new(6.0, 6.0, 10.0)),
             vec![
-                Sphere::new(Vec3A::new(0.0, 2.0, -5.0), 1.0),
-                Sphere::new(Vec3A::new(2.0, 0.0, -5.0), 1.0),
-                Sphere::new(Vec3A::new(2.0, 0.0, -7.0), 1.0),
+                Sphere::new(Vec3A::new(0.0, 3.0, 5.0), 1.0),
+                Sphere::new(Vec3A::new(2.0, 1.0, 5.0), 1.0),
+                Sphere::new(Vec3A::new(2.0, 1.0, 8.0), 1.0),
             ],
         ),
         Node::new(
-            AABB::new(Vec3A::new(-1000.0, -10.0, -1000.0), Vec3A::new(1000.0, 0.0, 1000.0)),
+            //AABB::new(Vec3A::new(-1000.0, -10.0, -1000.0), Vec3A::new(1000.0, 0.0, 1000.0)),
             vec![Sphere::new(Vec3A::new(0.0, -1003.0, 0.0), 1000.0)],
         ),
     ];
@@ -203,7 +202,7 @@ fn main() {
     canvas.render(move |mouse, image| {
         let look_x = (half_width - mouse.x as f32) / 200f32;
         let look_y = (half_height - mouse.y as f32) / 200f32;
-        let look_at = Vec3A::new(look_x, look_y, -1f32);
+        let look_at = Vec3A::new(look_x, look_y, 1f32);
 
         let camera =
             Camera::create_camera(position, look_at, inverse_height, half_width, half_height);

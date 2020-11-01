@@ -6,23 +6,17 @@ use crate::{Ray, Shape, Sphere};
 #[derive(Copy, Clone)]
 pub struct Intersection {
     pub ray: Ray,
-    distance_squared: f32,
-    v: f32,
+    distance: f32,
     pub object: Sphere,
 }
 
 impl Intersection {
-    pub fn new(ray: Ray, distance_squared: f32, v: f32, object: Sphere) -> Intersection {
+    pub fn new(ray: Ray, distance: f32, object: Sphere) -> Intersection {
         Intersection {
             ray,
-            distance_squared,
-            v,
+            distance,
             object,
         }
-    }
-
-    fn distance(&self) -> f32 {
-        self.v - self.distance_squared.sqrt()
     }
 
     pub fn normal(&self, hit_point: Vec3A) -> Vec3A {
@@ -30,13 +24,13 @@ impl Intersection {
     }
 
     pub fn hit_point(&self) -> Vec3A {
-        self.ray.position + (self.ray.direction * self.distance())
+        self.ray.position + (self.ray.direction * self.distance)
     }
 }
 
 impl Ord for Intersection {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.distance_squared <= other.distance_squared {
+        if self.distance < other.distance {
             Ordering::Less
         } else {
             Ordering::Greater
@@ -53,6 +47,6 @@ impl Eq for Intersection {}
 
 impl PartialEq for Intersection {
     fn eq(&self, other: &Self) -> bool {
-        self.distance_squared == other.distance_squared
+        self.distance == other.distance
     }
 }

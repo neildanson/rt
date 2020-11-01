@@ -8,8 +8,6 @@ pub struct AABB {
     maxs: Vec3A,
 }
 
-
-
 impl AABB {
     pub fn new(mins: Vec3A, maxs: Vec3A) -> Self {
         AABB { mins, maxs }

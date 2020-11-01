@@ -1,4 +1,6 @@
 use crate::{Intersection, Ray, Shape, Sphere, Bounds, AABB};
+use glam::Vec3A;
+use std::f32;
 
 pub struct Node {
     aabb: AABB,
@@ -18,9 +20,18 @@ impl Node {
             .filter_map(|object| object.intersects(ray))
             .min()
     }
+    
+    pub fn new(objects: Vec<Sphere>) -> Self {
+        let mut mins = Vec3A::splat(f32::MAX);
+        let mut maxs = Vec3A::splat(f32::MIN);
 
-    //TODO - Should this calculate AABB rather than passed in?
-    pub fn new(aabb: AABB, objects: Vec<Sphere>) -> Self {
+        for object in objects.iter() {
+            mins = mins.min(object.mins());
+            maxs = maxs.max(object.maxs());
+        }
+
+        let aabb = AABB::new(mins, maxs);
+
         Node { aabb, objects }
     }
 

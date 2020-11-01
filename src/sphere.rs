@@ -33,7 +33,7 @@ impl Shape for Sphere {
             if distance_squared < 0.0 {
                 None
             } else {
-                Some(Intersection::new(ray, distance_squared, v, *self))
+                Some(Intersection::new(ray, v - distance_squared.sqrt(), *self))
             }
         }
     }

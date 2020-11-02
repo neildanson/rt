@@ -39,7 +39,7 @@ impl Camera {
         half_height: f32,
     ) -> Camera {
         let forward = (look_at - position).normalize();
-        let down = Vec3A::unit_y();
+        let down = Vec3A::unit_y(); //this is actually inverted due to pixel-canvas coord system starting y=0 at the bottom of the window instead of top
         let right = forward.cross(down).normalize() * 1.5f32 * inverse_height;
         let up = forward.cross(right).normalize() * 1.5f32 * inverse_height;
 

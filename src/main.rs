@@ -202,12 +202,11 @@ fn main() {
         },
     ];
 
-    let work: Vec<(usize, usize, usize, usize)> = vec![
-        (0, 0, 800, 150),
-        (0, 150, 800, 300),
-        (0, 300, 800, 450),
-        (0, 450, 800, 600),
-    ];
+    let fragment_height = height / 4;
+    let mut work :Vec<(usize, usize, usize, usize)> = Vec::new();
+    for frag in 0 .. 4 {
+        work.push((0,(frag)*fragment_height, width, (frag+1)*fragment_height ));
+    }
 
     canvas.render(move |mouse, image| {
         let look_x = (half_width - mouse.x as f32) / 200f32;

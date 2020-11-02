@@ -9,7 +9,7 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn new(center: Vec3A, radius: f32) -> Sphere {
+    pub fn new(center: Vec3A, radius: f32) -> Self {
         Sphere {
             center,
             radius,

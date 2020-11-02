@@ -11,7 +11,7 @@ pub struct Intersection {
 }
 
 impl Intersection {
-    pub fn new(ray: Ray, distance: f32, object: Sphere) -> Intersection {
+    pub fn new(ray: Ray, distance: f32, object: Sphere) -> Self {
         Intersection {
             ray,
             distance,

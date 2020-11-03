@@ -1,4 +1,4 @@
-use super::{Intersection, Ray, Shape, Bounds};
+use super::{Bounds, Intersection, Ray, Shape};
 use glam::Vec3A;
 
 #[derive(Copy, Clone)]
@@ -23,7 +23,7 @@ impl Shape for Sphere {
         (position - self.center).normalize()
     }
 
-    fn intersects(&self, ray: Ray) -> Option<Intersection> {   
+    fn intersects(&self, ray: Ray) -> Option<Intersection> {
         //if  !self.intersects_bounds(ray) {
         //    return None;
         //}

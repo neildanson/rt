@@ -1,4 +1,4 @@
-use super::{Intersection, Ray, Shape, Sphere, Bounds, AABB};
+use super::{Bounds, Intersection, Ray, Shape, Sphere, AABB};
 use glam::Vec3A;
 use std::f32;
 
@@ -20,7 +20,7 @@ impl Node {
             .filter_map(|object| object.intersects(ray))
             .min()
     }
-    
+
     pub fn new(objects: Vec<Sphere>) -> Self {
         let mut mins = Vec3A::splat(f32::MAX);
         let mut maxs = Vec3A::splat(f32::MIN);

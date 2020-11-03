@@ -5,21 +5,21 @@ use std::ops::IndexMut;
 
 pub mod aabb;
 pub mod bounds;
-pub mod ray;
 pub mod camera;
 pub mod intersection;
 pub mod node;
+pub mod ray;
 pub mod shape;
 pub mod sphere;
 
-pub use ray::Ray;
 pub use aabb::AABB;
+pub use bounds::Bounds;
 pub use camera::Camera;
 pub use intersection::Intersection;
 pub use node::Node;
+pub use ray::Ray;
 pub use shape::Shape;
 pub use sphere::Sphere;
-pub use bounds::Bounds;
 
 const AMBIENT_LIGHT: Vec3A = const_vec3a!([0.5, 0.5, 0.5]);
 
@@ -31,7 +31,7 @@ pub struct Light {
 #[inline]
 fn to_color(vec: Vec3A) -> Color {
     let rgb = vec.min(Vec3A::one()).max(Vec3A::zero()) * 255.0;
-    let (red,green,blue) = rgb.into();
+    let (red, green, blue) = rgb.into();
     Color {
         r: red as u8,
         g: green as u8,
@@ -40,16 +40,11 @@ fn to_color(vec: Vec3A) -> Color {
 }
 
 fn any_intersection(ray: Ray, nodes: &[Node]) -> bool {
-    nodes
-        .iter()
-        .any(|nodes| nodes.intersects(ray).is_some())
+    nodes.iter().any(|nodes| nodes.intersects(ray).is_some())
 }
 
 fn nearest_intersection(ray: Ray, nodes: &[Node]) -> Option<Intersection> {
-    nodes
-        .iter()
-        .filter_map(|node| node.intersects(ray))
-        .min()
+    nodes.iter().filter_map(|node| node.intersects(ray)).min()
 }
 
 fn apply_light(
@@ -131,7 +126,7 @@ fn trace(ray: Ray, objects: &[Node], lights: &[Light], depth: i32) -> Vec3A {
 }
 
 fn trace_region(
-    minmax:(usize, usize, usize),
+    minmax: (usize, usize, usize),
     camera: &Camera,
     objects: &[Node],
     lights: &[Light],
@@ -155,7 +150,7 @@ pub fn run() {
     let inverse_height = 1.0f32 / height as f32;
     let half_height = height as f32 / 2.0f32;
     let half_width = width as f32 / 2.0f32;
-    let position = Vec3A::new(0.0,2.0,0.0);
+    let position = Vec3A::new(0.0, 2.0, 0.0);
 
     #[cfg(vec3a_sse2)]
     {
@@ -192,7 +187,6 @@ pub fn run() {
             position: Vec3A::new(3.0, 3.0, 1.0),
             color: Vec3A::new(0.0, 0.4, 0.0),
         },
-
         Light {
             position: Vec3A::new(0.0, 3.0, -1.0),
             color: Vec3A::new(0.0, 0.0, 0.5),
@@ -200,9 +194,9 @@ pub fn run() {
     ];
 
     let fragment_height = height / 4;
-    let mut work :Vec<(usize, usize, usize)> = Vec::new();
-    for frag in 0 .. 4 {
-        work.push((width, frag *fragment_height, (frag+1)*fragment_height));
+    let mut work: Vec<(usize, usize, usize)> = Vec::new();
+    for frag in 0..4 {
+        work.push((width, frag * fragment_height, (frag + 1) * fragment_height));
     }
 
     canvas.render(move |mouse, image| {

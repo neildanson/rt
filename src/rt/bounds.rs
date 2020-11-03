@@ -3,16 +3,16 @@ use glam::Vec3A;
 use std::mem::swap;
 
 pub trait Bounds {
-    fn mins (&self) -> Vec3A;
-    fn maxs (&self) -> Vec3A;
+    fn mins(&self) -> Vec3A;
+    fn maxs(&self) -> Vec3A;
 
     fn intersects_bounds(&self, ray: Ray) -> bool {
         let inv_direction = ray.direction.recip();
         let min = (self.mins() - ray.position) * inv_direction;
         let max = (self.maxs() - ray.position) * inv_direction;
 
-        let (mut minx,mut miny,mut minz) = min.into();
-        let (mut maxx,mut maxy,mut maxz) = max.into();
+        let (mut minx, mut miny, mut minz) = min.into();
+        let (mut maxx, mut maxy, mut maxz) = max.into();
         if minx > maxx {
             swap(&mut minx, &mut maxx);
         }
@@ -20,15 +20,15 @@ pub trait Bounds {
         if miny > maxy {
             swap(&mut miny, &mut maxy);
         }
-        
+
         if minx > maxy || miny > maxx {
-            return false
+            return false;
         }
-        
+
         if miny > minx {
             minx = miny;
         }
-        if maxy <maxx { 
+        if maxy < maxx {
             maxx = maxy;
         }
 
@@ -37,7 +37,7 @@ pub trait Bounds {
         }
 
         if minx > maxz || minz > maxx {
-            return false
+            return false;
         }
 
         true

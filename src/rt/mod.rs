@@ -131,18 +131,15 @@ fn trace(ray: Ray, objects: &[Node], lights: &[Light], depth: i32) -> Vec3A {
 }
 
 fn trace_region(
-    min_x: usize,
-    min_y: usize,
-    max_x: usize,
-    max_y: usize,
+    minmax:(usize, usize, usize),
     camera: &Camera,
     objects: &[Node],
     lights: &[Light],
 ) -> Vec<(usize, usize, Vec3A)> {
-    let mut result = Vec::with_capacity((max_x - min_x) * (max_y - min_y));
-    for y in min_y..max_y {
+    let mut result = Vec::with_capacity(minmax.0 * (minmax.2 - minmax.1));
+    for y in minmax.1..minmax.2 {
         let yf = y as f32;
-        for x in min_x..max_x {
+        for x in 0..minmax.0 {
             let ray = camera.get_ray(x as f32, yf);
 
             result.push((x, y, trace(ray, objects, lights, 0)));
@@ -203,9 +200,9 @@ pub fn run() {
     ];
 
     let fragment_height = height / 4;
-    let mut work :Vec<(usize, usize, usize, usize)> = Vec::new();
+    let mut work :Vec<(usize, usize, usize)> = Vec::new();
     for frag in 0 .. 4 {
-        work.push((0,(frag)*fragment_height, width, (frag+1)*fragment_height ));
+        work.push((width, frag *fragment_height, (frag+1)*fragment_height));
     }
 
     canvas.render(move |mouse, image| {
@@ -218,9 +215,7 @@ pub fn run() {
 
         let result = work
             .par_iter()
-            .map(|(min_x, min_y, max_x, max_y)| {
-                trace_region(*min_x, *min_y, *max_x, *max_y, &camera, &scene, &lights)
-            })
+            .map(|minmax| trace_region(*minmax, &camera, &scene, &lights))
             .collect::<Vec<_>>();
 
         for r in result {

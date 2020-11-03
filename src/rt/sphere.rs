@@ -23,7 +23,11 @@ impl Shape for Sphere {
         (position - self.center).normalize()
     }
 
-    fn intersects(&self, ray: Ray) -> Option<Intersection> {
+    fn intersects(&self, ray: Ray) -> Option<Intersection> {   
+        //if  !self.intersects_bounds(ray) {
+        //    return None;
+        //}
+
         let diff = self.center - ray.position;
         let v = diff.dot(ray.direction);
         if v < 0.0 {

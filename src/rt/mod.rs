@@ -40,7 +40,7 @@ fn to_color(vec: Vec3A) -> Color {
 }
 
 fn any_intersection(ray: Ray, nodes: &[Node]) -> bool {
-    nodes.iter().any(|nodes| nodes.intersects(ray).is_some())
+    nodes.iter().any(|node| node.intersects(ray).is_some())
 }
 
 fn nearest_intersection(ray: Ray, nodes: &[Node]) -> Option<Intersection> {
@@ -50,7 +50,7 @@ fn nearest_intersection(ray: Ray, nodes: &[Node]) -> Option<Intersection> {
 fn apply_light(
     position: Vec3A,
     normal: Vec3A,
-    objects: &[Node],
+    nodes: &[Node],
     light: &Light,
     ray_direction: Vec3A,
 ) -> Vec3A {
@@ -59,10 +59,11 @@ fn apply_light(
         position,
         direction: light_dir,
     };
-    let is_in_shadow = any_intersection(ray, objects);
+    let is_in_shadow = any_intersection(ray, nodes);
     if is_in_shadow {
         Vec3A::zero()
     } else {
+    
         let illum = light_dir.dot(normal);
         let diffuse_color = if illum > 0.0 {
             light.color * illum * AMBIENT_LIGHT
@@ -85,19 +86,19 @@ fn apply_light(
 fn apply_lighting(
     position: Vec3A,
     normal: Vec3A,
-    objects: &[Node],
+    nodes: &[Node],
     lights: &[Light],
     ray_direction: Vec3A,
 ) -> Vec3A {
     let mut color = Vec3A::zero();
     for light in lights {
-        color += apply_light(position, normal, objects, &light, ray_direction)
+        color += apply_light(position, normal, nodes, &light, ray_direction)
     }
     color
 }
 
-fn trace(ray: Ray, objects: &[Node], lights: &[Light], depth: i32) -> Vec3A {
-    let intersection = nearest_intersection(ray, objects);
+fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: i32) -> Vec3A {
+    let intersection = nearest_intersection(ray, nodes);
     match intersection {
         Some(intersection) => {
             let hit_point = intersection.hit_point();
@@ -106,7 +107,7 @@ fn trace(ray: Ray, objects: &[Node], lights: &[Light], depth: i32) -> Vec3A {
             let color = apply_lighting(
                 hit_point,
                 normal, // intersection.normal,
-                objects,
+                nodes,
                 lights,
                 intersection.ray.direction,
             );
@@ -115,7 +116,7 @@ fn trace(ray: Ray, objects: &[Node], lights: &[Light], depth: i32) -> Vec3A {
                     position: hit_point,
                     direction: normal,
                 };
-                let newcolor = trace(ray, objects, lights, depth + 1);
+                let newcolor = trace(ray, nodes, lights, depth + 1);
                 color + newcolor
             } else {
                 color
@@ -128,7 +129,7 @@ fn trace(ray: Ray, objects: &[Node], lights: &[Light], depth: i32) -> Vec3A {
 fn trace_region(
     minmax: (usize, usize, usize),
     camera: &Camera,
-    objects: &[Node],
+    nodes: &[Node],
     lights: &[Light],
 ) -> Vec<(usize, usize, Vec3A)> {
     let mut result = Vec::with_capacity(minmax.0 * (minmax.2 - minmax.1));
@@ -137,7 +138,7 @@ fn trace_region(
         for x in 0..minmax.0 {
             let ray = camera.get_ray(x as f32, yf);
 
-            result.push((x, y, trace(ray, objects, lights, 0)));
+            result.push((x, y, trace(ray, nodes, lights, 0)));
         }
     }
 

@@ -153,11 +153,6 @@ pub fn run() {
     let half_width = width as f32 / 2.0f32;
     let position = Vec3A::new(0.0, 2.0, 0.0);
 
-    #[cfg(vec3a_sse2)]
-    {
-        println("SSE2");
-    }
-
     let canvas = Canvas::new(width, height)
         .title("Raytrace")
         .state(MouseState::new())
@@ -166,7 +161,6 @@ pub fn run() {
 
     let scene = vec![
         Node::new(
-            //AABB::new(Vec3A::new(-6.0, 0.0, -5.0), Vec3A::new(6.0, 6.0, 10.0)),
             vec![
                 Sphere::new(Vec3A::new(0.0, 3.0, 5.0), 1.0),
                 Sphere::new(Vec3A::new(2.0, 1.0, 5.0), 1.0),
@@ -174,7 +168,6 @@ pub fn run() {
             ],
         ),
         Node::new(
-            //AABB::new(Vec3A::new(-1000.0, -10.0, -1000.0), Vec3A::new(1000.0, 0.0, 1000.0)),
             vec![Sphere::new(Vec3A::new(0.0, -1003.0, 0.0), 1000.0)],
         ),
     ];
@@ -194,7 +187,7 @@ pub fn run() {
         },
     ];
 
-    let fragment_height = height / 4;
+    let fragment_height = height / num_cpus::get();
     let mut work: Vec<(usize, usize, usize)> = Vec::new();
     for frag in 0..4 {
         work.push((width, frag * fragment_height, (frag + 1) * fragment_height));

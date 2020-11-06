@@ -4,16 +4,20 @@ use glam::Vec3A;
 #[derive(Copy, Clone)]
 pub struct Sphere {
     center: Vec3A,
-    radius: f32,
     radius_squared: f32,
+    mins:Vec3A,
+    maxs:Vec3A
 }
 
 impl Sphere {
     pub fn new(center: Vec3A, radius: f32) -> Self {
+        let radius_vec = Vec3A::splat(radius);
+        
         Sphere {
             center,
-            radius,
             radius_squared: radius.powi(2),
+            mins: center - radius_vec,
+            maxs: center + radius_vec
         }
     }
 }
@@ -33,11 +37,11 @@ impl Shape for Sphere {
         if v < 0.0 {
             None
         } else {
-            let distance_squared = self.radius_squared - (diff.dot(diff) - v.powi(2));
-            if distance_squared < 0.0 {
+            let discriminant = self.radius_squared - (diff.dot(diff) - v.powi(2));
+            if discriminant < 0.0 {
                 None
             } else {
-                Some(Intersection::new(ray, v - distance_squared.sqrt(), *self))
+                Some(Intersection::new(ray, v - discriminant.sqrt(), *self))
             }
         }
     }
@@ -45,12 +49,10 @@ impl Shape for Sphere {
 
 impl Bounds for Sphere {
     fn mins(&self) -> Vec3A {
-        let radius = Vec3A::splat(self.radius);
-        self.center - radius
+        self.mins
     }
 
     fn maxs(&self) -> Vec3A {
-        let radius = Vec3A::splat(self.radius);
-        self.center + radius
+        self.maxs
     }
 }

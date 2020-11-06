@@ -22,6 +22,7 @@ pub use shape::Shape;
 pub use sphere::Sphere;
 
 const AMBIENT_LIGHT: Vec3A = const_vec3a!([0.5, 0.5, 0.5]);
+const RELECTION_DEPTH : u32 = 3;
 
 pub struct Light {
     position: Vec3A,
@@ -97,7 +98,7 @@ fn apply_lighting(
     color
 }
 
-fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: i32) -> Vec3A {
+fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: u32) -> Vec3A {
     let intersection = nearest_intersection(ray, nodes);
     match intersection {
         Some(intersection) => {
@@ -111,7 +112,7 @@ fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: i32) -> Vec3A {
                 lights,
                 intersection.ray.direction,
             );
-            if depth < 3 {
+            if depth < RELECTION_DEPTH {
                 let ray = Ray {
                     position: hit_point,
                     direction: normal,
@@ -127,7 +128,7 @@ fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: i32) -> Vec3A {
 }
 
 fn trace_region(
-    minmax: (usize, usize, usize),
+    minmax: &(usize, usize, usize),
     camera: &Camera,
     nodes: &[Node],
     lights: &[Light],
@@ -203,7 +204,7 @@ pub fn run() {
 
         let result = work
             .par_iter()
-            .map(|minmax| trace_region(*minmax, &camera, &scene, &lights))
+            .map(|minmax| trace_region(minmax, &camera, &scene, &lights))
             .collect::<Vec<_>>();
 
         for r in result {

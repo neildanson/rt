@@ -5,19 +5,19 @@ use glam::Vec3A;
 pub struct Sphere {
     center: Vec3A,
     radius_squared: f32,
-    mins:Vec3A,
-    maxs:Vec3A
+    mins: Vec3A,
+    maxs: Vec3A,
 }
 
 impl Sphere {
     pub fn new(center: Vec3A, radius: f32) -> Self {
         let radius_vec = Vec3A::splat(radius);
-        
+
         Sphere {
             center,
             radius_squared: radius.powi(2),
             mins: center - radius_vec,
-            maxs: center + radius_vec
+            maxs: center + radius_vec,
         }
     }
 }

@@ -22,7 +22,13 @@ pub use shape::Shape;
 pub use sphere::Sphere;
 
 const AMBIENT_LIGHT: Vec3A = const_vec3a!([0.5, 0.5, 0.5]);
-const RELECTION_DEPTH : u32 = 3;
+const RELECTION_DEPTH: u32 = 3;
+const WIDTH: usize = 800;
+const HEIGHT: usize = 600;
+const INVERSE_HEIGHT: f32 = 1.0f32 / HEIGHT as f32;
+const HALF_HEIGHT: f32 = HEIGHT as f32 / 2.0f32;
+const HALF_WIDTH: f32 = WIDTH as f32 / 2.0f32;
+const CAMERA_POSITION: Vec3A = const_vec3a!([0.0, 2.0, 0.0]);
 
 pub struct Light {
     position: Vec3A,
@@ -64,7 +70,6 @@ fn apply_light(
     if is_in_shadow {
         Vec3A::zero()
     } else {
-    
         let illum = light_dir.dot(normal);
         let diffuse_color = if illum > 0.0 {
             light.color * illum * AMBIENT_LIGHT
@@ -146,34 +151,19 @@ fn trace_region(
     result
 }
 
-pub fn run() {
-    let width = 800;
-    let height = 600;
-    let inverse_height = 1.0f32 / height as f32;
-    let half_height = height as f32 / 2.0f32;
-    let half_width = width as f32 / 2.0f32;
-    let position = Vec3A::new(0.0, 2.0, 0.0);
+fn get_nodes() -> Vec<Node> {
+    vec![
+        Node::new(vec![
+            Sphere::new(Vec3A::new(0.0, 3.0, 5.0), 1.0),
+            Sphere::new(Vec3A::new(2.0, 1.0, 5.0), 1.0),
+            Sphere::new(Vec3A::new(2.0, 1.0, 8.0), 1.0),
+        ]),
+        Node::new(vec![Sphere::new(Vec3A::new(0.0, -1003.0, 0.0), 1000.0)]),
+    ]
+}
 
-    let canvas = Canvas::new(width, height)
-        .title("Raytrace")
-        .state(MouseState::new())
-        .show_ms(true)
-        .input(MouseState::handle_input);
-
-    let scene = vec![
-        Node::new(
-            vec![
-                Sphere::new(Vec3A::new(0.0, 3.0, 5.0), 1.0),
-                Sphere::new(Vec3A::new(2.0, 1.0, 5.0), 1.0),
-                Sphere::new(Vec3A::new(2.0, 1.0, 8.0), 1.0),
-            ],
-        ),
-        Node::new(
-            vec![Sphere::new(Vec3A::new(0.0, -1003.0, 0.0), 1000.0)],
-        ),
-    ];
-
-    let lights = vec![
+fn get_lights() -> Vec<Light> {
+    vec![
         Light {
             position: Vec3A::new(-3.0, 3.0, 1.0),
             color: Vec3A::new(0.5, 0.0, 0.0),
@@ -186,25 +176,39 @@ pub fn run() {
             position: Vec3A::new(0.0, 3.0, -1.0),
             color: Vec3A::new(0.0, 0.0, 0.5),
         },
-    ];
+    ]
+}
 
-    let fragment_height = height / num_cpus::get();
+fn run_pixel_canvas() {
+    let canvas = Canvas::new(WIDTH, HEIGHT)
+        .title("Raytrace")
+        .state(MouseState::new())
+        .show_ms(true)
+        .input(MouseState::handle_input);
+    let fragment_height = HEIGHT / num_cpus::get();
     let mut work: Vec<(usize, usize, usize)> = Vec::new();
+    let nodes = get_nodes();
+    let lights = get_lights();
     for frag in 0..4 {
-        work.push((width, frag * fragment_height, (frag + 1) * fragment_height));
+        work.push((WIDTH, frag * fragment_height, (frag + 1) * fragment_height));
     }
 
     canvas.render(move |mouse, image| {
-        let look_x = (half_width - mouse.x as f32) / 200f32;
-        let look_y = (half_height - mouse.y as f32) / 200f32;
+        let look_x = (HALF_WIDTH - mouse.x as f32) / 200f32;
+        let look_y = (HALF_HEIGHT - mouse.y as f32) / 200f32;
         let look_at = Vec3A::new(look_x, look_y, 1f32);
 
-        let camera =
-            Camera::create_camera(position, look_at, inverse_height, half_width, half_height);
+        let camera = Camera::create_camera(
+            CAMERA_POSITION,
+            look_at,
+            INVERSE_HEIGHT,
+            HALF_WIDTH,
+            HALF_HEIGHT,
+        );
 
         let result = work
             .par_iter()
-            .map(|minmax| trace_region(minmax, &camera, &scene, &lights))
+            .map(|minmax| trace_region(minmax, &camera, &nodes, &lights))
             .collect::<Vec<_>>();
 
         for r in result {
@@ -214,4 +218,8 @@ pub fn run() {
             }
         }
     });
+}
+
+pub fn run() {
+    run_pixel_canvas();
 }

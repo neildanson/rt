@@ -186,11 +186,12 @@ fn run_pixel_canvas() {
         .state(MouseState::new())
         .show_ms(true)
         .input(MouseState::handle_input);
-    let fragment_height = HEIGHT / num_cpus::get();
+    let num_cpus = num_cpus::get();
+    let fragment_height = HEIGHT / num_cpus;
     let mut work: Vec<(usize, usize, usize)> = Vec::new();
     let nodes = get_nodes();
     let lights = get_lights();
-    for frag in 0..4 {
+    for frag in 0..num_cpus {
         work.push((WIDTH, frag * fragment_height, (frag + 1) * fragment_height));
     }
 
@@ -225,7 +226,7 @@ fn run_pixel_canvas() {
 fn to_fb_color(vec: Vec3A) -> u32 {
     let rgb = vec.min(Vec3A::one()).max(Vec3A::zero()) * 255.0;
     let (red, green, blue) = rgb.into();
-    ((red as u32) << 24) | ((green as u32) << 16) | ((blue as u32) << 8) 
+    (255 << 24) | ((red as u32) << 16) | ((green as u32) << 8) | ((blue as u32) )  
 }
 
 fn run_minifb() {
@@ -242,17 +243,18 @@ fn run_minifb() {
         panic!("{}", e);
     });
 
-    let fragment_height = HEIGHT / num_cpus::get();
+    let num_cpus = num_cpus::get();
+    let fragment_height = HEIGHT / num_cpus;
     let mut work: Vec<(usize, usize, usize)> = Vec::new();
     let nodes = get_nodes();
     let lights = get_lights();
 
-    for frag in 0..4 {
+    for frag in 0..num_cpus {
         work.push((WIDTH, frag * fragment_height, (frag + 1) * fragment_height));
     }
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        let (mouse_x, mouse_y) = window.get_mouse_pos(MouseMode::Discard).unwrap_or((0.0f32,0.0f32));
+        let (mouse_x, mouse_y) = window.get_mouse_pos(MouseMode::Pass).unwrap_or((0.0f32,0.0f32));
         let look_x = (HALF_WIDTH - mouse_x) / 200f32;
         let look_y = (HALF_HEIGHT - mouse_y) / 200f32;
         let look_at = Vec3A::new(look_x, look_y, 1f32);
@@ -272,12 +274,11 @@ fn run_minifb() {
 
         for r in result {
             for (x, y, col) in r {
-                let color = buffer.index_mut(WIDTH * y + x);
+                let color = buffer.index_mut(WIDTH * (HEIGHT - 1 - y) + x);
                 *color = to_fb_color(col);
             }
         }
 
-        // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window
             .update_with_buffer(&buffer, WIDTH, HEIGHT)
             .unwrap();

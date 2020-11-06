@@ -1,5 +1,4 @@
 use glam::{const_vec3a, Vec3A};
-use pixel_canvas::{input::MouseState, Canvas, Color, XY};
 use rayon::prelude::*;
 use std::ops::IndexMut;
 
@@ -33,17 +32,6 @@ const CAMERA_POSITION: Vec3A = const_vec3a!([0.0, 2.0, 0.0]);
 pub struct Light {
     position: Vec3A,
     color: Vec3A,
-}
-
-#[inline]
-fn to_color(vec: Vec3A) -> Color {
-    let rgb = vec.min(Vec3A::one()).max(Vec3A::zero()) * 255.0;
-    let (red, green, blue) = rgb.into();
-    Color {
-        r: red as u8,
-        g: green as u8,
-        b: blue as u8,
-    }
 }
 
 fn any_intersection(ray: Ray, nodes: &[Node]) -> bool {
@@ -179,7 +167,20 @@ fn get_lights() -> Vec<Light> {
     ]
 }
 
+
+#[inline]
+fn to_pb_color(vec: Vec3A) -> pixel_canvas::Color {
+    let rgb = vec.min(Vec3A::one()).max(Vec3A::zero()) * 255.0;
+    let (red, green, blue) = rgb.into();
+    pixel_canvas::Color {
+        r: red as u8,
+        g: green as u8,
+        b: blue as u8,
+    }
+}
+
 fn run_pixel_canvas() {
+    use pixel_canvas::{input::MouseState, Canvas, XY};
     let canvas = Canvas::new(WIDTH, HEIGHT)
         .title("Raytrace")
         .state(MouseState::new())
@@ -214,12 +215,76 @@ fn run_pixel_canvas() {
         for r in result {
             for (x, y, col) in r {
                 let color = image.index_mut(XY(x, y));
-                *color = to_color(col);
+                *color = to_pb_color(col);
             }
         }
     });
 }
 
+#[inline]
+fn to_fb_color(vec: Vec3A) -> u32 {
+    let rgb = vec.min(Vec3A::one()).max(Vec3A::zero()) * 255.0;
+    let (red, green, blue) = rgb.into();
+    ((red as u32) << 24) | ((green as u32) << 16) | ((blue as u32) << 8) 
+}
+
+fn run_minifb() {
+    use minifb::{Key, Window, WindowOptions, MouseMode};
+    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
+
+    let mut window = Window::new(
+        "Test - ESC to exit",
+        WIDTH,
+        HEIGHT,
+        WindowOptions::default(),
+    )
+    .unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
+
+    let fragment_height = HEIGHT / num_cpus::get();
+    let mut work: Vec<(usize, usize, usize)> = Vec::new();
+    let nodes = get_nodes();
+    let lights = get_lights();
+
+    for frag in 0..4 {
+        work.push((WIDTH, frag * fragment_height, (frag + 1) * fragment_height));
+    }
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        let (mouse_x, mouse_y) = window.get_mouse_pos(MouseMode::Discard).unwrap_or((0.0f32,0.0f32));
+        let look_x = (HALF_WIDTH - mouse_x) / 200f32;
+        let look_y = (HALF_HEIGHT - mouse_y) / 200f32;
+        let look_at = Vec3A::new(look_x, look_y, 1f32);
+
+        let camera = Camera::create_camera(
+            CAMERA_POSITION,
+            look_at,
+            INVERSE_HEIGHT,
+            HALF_WIDTH,
+            HALF_HEIGHT,
+        );
+
+        let result = work
+            .par_iter()
+            .map(|minmax| trace_region(minmax, &camera, &nodes, &lights))
+            .collect::<Vec<_>>();
+
+        for r in result {
+            for (x, y, col) in r {
+                let color = buffer.index_mut(WIDTH * y + x);
+                *color = to_fb_color(col);
+            }
+        }
+
+        // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
+        window
+            .update_with_buffer(&buffer, WIDTH, HEIGHT)
+            .unwrap();
+    }
+}
+
+
 pub fn run() {
-    run_pixel_canvas();
+    run_minifb();
 }

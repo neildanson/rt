@@ -1,12 +1,17 @@
-use super::{Bounds, Intersection, Ray, Shape};
+use super::{Intersection, Ray, Shape};
 use glam::Vec3A;
+use bvh::nalgebra::Point3;
+use bvh::bounding_hierarchy::BHShape;
+use bvh::aabb::{AABB, Bounded};
 
 #[derive(Copy, Clone)]
 pub struct Sphere {
     center: Vec3A,
+    radius : f32,
     radius_squared: f32,
     mins: Vec3A,
     maxs: Vec3A,
+    index : usize
 }
 
 impl Sphere {
@@ -15,9 +20,11 @@ impl Sphere {
 
         Sphere {
             center,
+            radius,
             radius_squared: radius.powi(2),
             mins: center - radius_vec,
             maxs: center + radius_vec,
+            index : 0
         }
     }
 }
@@ -47,12 +54,21 @@ impl Shape for Sphere {
     }
 }
 
-impl Bounds for Sphere {
-    fn mins(&self) -> Vec3A {
-        self.mins
+impl Bounded for Sphere {
+    fn aabb(&self) -> AABB {
+        let (minx,miny,minz) = self.mins.into();
+        let (maxx,maxy,maxz) = self.maxs.into();
+        AABB::with_bounds(Point3::new(minx,miny,minz), Point3::new(maxx,maxy,maxz))
+    }
+}
+
+impl BHShape for Sphere {
+    fn set_bh_node_index(&mut self, index: usize) {
+        self.index = index;
     }
 
-    fn maxs(&self) -> Vec3A {
-        self.maxs
+
+    fn bh_node_index(&self) -> usize {
+        self.index
     }
 }

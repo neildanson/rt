@@ -1,27 +1,23 @@
 use glam::{const_vec3a, Vec3A};
 use rayon::prelude::*;
 use std::ops::IndexMut;
+use bvh::bvh::BVH;
+use bvh::nalgebra::{Point3, Vector3};
 
-pub mod aabb;
-pub mod bounds;
 pub mod camera;
 pub mod intersection;
-pub mod node;
 pub mod ray;
 pub mod shape;
 pub mod sphere;
 
-pub use aabb::AABB;
-pub use bounds::Bounds;
 pub use camera::Camera;
 pub use intersection::Intersection;
-pub use node::Node;
 pub use ray::Ray;
 pub use shape::Shape;
 pub use sphere::Sphere;
 
 const AMBIENT_LIGHT: Vec3A = const_vec3a!([0.5, 0.5, 0.5]);
-const RELECTION_DEPTH: u32 = 3;
+const RELECTION_DEPTH: u32 = 1;
 const WIDTH: usize = 800;
 const HEIGHT: usize = 600;
 const INVERSE_HEIGHT: f32 = 1.0f32 / HEIGHT as f32;
@@ -34,18 +30,31 @@ pub struct Light {
     color: Vec3A,
 }
 
-fn any_intersection(ray: Ray, nodes: &[Node]) -> bool {
-    nodes.iter().any(|node| node.intersects(ray).is_some())
+struct Scene {
+    bvh:BVH, 
+    shapes : Vec<Sphere>
 }
 
-fn nearest_intersection(ray: Ray, nodes: &[Node]) -> Option<Intersection> {
-    nodes.iter().filter_map(|node| node.intersects(ray)).min()
+fn any_intersection(ray: Ray, scene: &Scene) -> bool {
+    let origin : [f32;3] = ray.position.into();
+    let direction : [f32;3] = ray.direction.into();
+    let ray2 = bvh::ray::Ray::new(Point3::from(origin), Vector3::from(direction));
+
+    scene.bvh.traverse(&ray2, &scene.shapes).iter().any(|node| node.intersects(ray).is_some())
+}
+
+fn nearest_intersection(ray: Ray, scene: &Scene) -> Option<Intersection> {
+    //nodes.iter().filter_map(|node| node.intersects(ray)).min()
+    let origin : [f32;3] = ray.position.into();
+    let direction : [f32;3] = (ray.direction).into();
+    let ray2 = bvh::ray::Ray::new(Point3::from(origin), Vector3::from(direction));    
+    scene.bvh.traverse(&ray2, &scene.shapes).iter().filter_map(|node| node.intersects(ray)).min()
 }
 
 fn apply_light(
     position: Vec3A,
     normal: Vec3A,
-    nodes: &[Node],
+    scene: &Scene,
     light: &Light,
     ray_direction: Vec3A,
 ) -> Vec3A {
@@ -54,7 +63,7 @@ fn apply_light(
         position,
         direction: light_dir,
     };
-    let is_in_shadow = any_intersection(ray, nodes);
+    let is_in_shadow = any_intersection(ray, scene);
     if is_in_shadow {
         Vec3A::zero()
     } else {
@@ -80,19 +89,19 @@ fn apply_light(
 fn apply_lighting(
     position: Vec3A,
     normal: Vec3A,
-    nodes: &[Node],
+    scene: &Scene,
     lights: &[Light],
     ray_direction: Vec3A,
 ) -> Vec3A {
     let mut color = Vec3A::zero();
     for light in lights {
-        color += apply_light(position, normal, nodes, &light, ray_direction)
+        color += apply_light(position, normal, scene, &light, ray_direction)
     }
     color
 }
 
-fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: u32) -> Vec3A {
-    let intersection = nearest_intersection(ray, nodes);
+fn trace(ray: Ray, scene: &Scene, lights: &[Light], depth: u32) -> Vec3A {
+    let intersection = nearest_intersection(ray, scene);
     match intersection {
         Some(intersection) => {
             let hit_point = intersection.hit_point();
@@ -101,7 +110,7 @@ fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: u32) -> Vec3A {
             let color = apply_lighting(
                 hit_point,
                 normal, // intersection.normal,
-                nodes,
+                scene,
                 lights,
                 intersection.ray.direction,
             );
@@ -110,7 +119,7 @@ fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: u32) -> Vec3A {
                     position: hit_point,
                     direction: normal,
                 };
-                let newcolor = trace(ray, nodes, lights, depth + 1);
+                let newcolor = trace(ray, scene, lights, depth + 1);
                 color + newcolor
             } else {
                 color
@@ -123,7 +132,7 @@ fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: u32) -> Vec3A {
 fn trace_region(
     minmax: &(usize, usize, usize),
     camera: &Camera,
-    nodes: &[Node],
+    scene: &Scene,
     lights: &[Light],
 ) -> Vec<(usize, usize, Vec3A)> {
     let mut result = Vec::with_capacity(minmax.0 * (minmax.2 - minmax.1));
@@ -132,22 +141,34 @@ fn trace_region(
         for x in 0..minmax.0 {
             let ray = camera.get_ray(x as f32, yf);
 
-            result.push((x, y, trace(ray, nodes, lights, 0)));
+            result.push((x, y, trace(ray, scene, lights, 0)));
         }
     }
 
     result
 }
 
-fn get_nodes() -> Vec<Node> {
-    vec![
-        Node::new(vec![
-            Sphere::new(Vec3A::new(0.0, 3.0, 5.0), 1.0),
-            Sphere::new(Vec3A::new(2.0, 1.0, 5.0), 1.0),
-            Sphere::new(Vec3A::new(2.0, 1.0, 8.0), 1.0),
-        ]),
-        Node::new(vec![Sphere::new(Vec3A::new(0.0, -1003.0, 0.0), 1000.0)]),
-    ]
+fn get_nodes() -> Scene {
+    let mut shapes = Vec::new();
+    for x in 3.. 16 {
+        for z in 3 ..16 {
+            let x = x as f32;
+            let z = z as f32;
+            let shape = Sphere::new(Vec3A::new(x * 2.0, 3.0, z * 2.0), 1.0);
+            shapes.push(shape);
+        }
+    }
+    //let mut shapes = vec![
+    //        Sphere::new(Vec3A::new(0.0, 3.0, 5.0), 1.0),
+    //        Sphere::new(Vec3A::new(2.0, 1.0, 5.0), 1.0),
+    //        Sphere::new(Vec3A::new(2.0, 1.0, 8.0), 1.0),
+    //];
+    shapes.push(
+        Sphere::new(Vec3A::new(0.0, -1003.0, 0.0), 1000.0));
+
+    let bvh = BVH::build(&mut shapes);
+    
+    Scene { bvh, shapes }
 }
 
 fn get_lights() -> Vec<Light> {
@@ -287,5 +308,5 @@ fn run_minifb() {
 
 
 pub fn run() {
-    run_minifb();
+    run_pixel_canvas();
 }

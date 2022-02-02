@@ -9,8 +9,8 @@ fn bounds_hit(c: &mut Criterion) {
     c.bench_function("AABB Intersection (hit)", |b| {
         b.iter(|| {
             bounds.intersects_bounds(black_box(Ray {
-                position: Vec3A::zero(),
-                direction: Vec3A::unit_z(),
+                position: Vec3A::ZERO,
+                direction: Vec3A::Z,
             }))
         })
     });
@@ -22,7 +22,7 @@ fn bounds_miss(c: &mut Criterion) {
         b.iter(|| {
             bounds.intersects_bounds(black_box(Ray {
                 position: Vec3A::new(10.0, 10.0, -1.0),
-                direction: Vec3A::unit_z(),
+                direction: Vec3A::Z,
             }))
         })
     });
@@ -33,8 +33,8 @@ fn sphere_hit(c: &mut Criterion) {
     c.bench_function("Sphere Intersection (hit)", |b| {
         b.iter(|| {
             sphere.intersects(black_box(Ray {
-                position: Vec3A::zero(),
-                direction: Vec3A::unit_z(),
+                position: Vec3A::ZERO,
+                direction: Vec3A::Z,
             }))
         })
     });
@@ -46,7 +46,7 @@ fn sphere_miss(c: &mut Criterion) {
         b.iter(|| {
             sphere.intersects(black_box(Ray {
                 position: Vec3A::new(10.0, 10.0, -1.0),
-                direction: Vec3A::unit_z(),
+                direction: Vec3A::Z,
             }))
         })
     });

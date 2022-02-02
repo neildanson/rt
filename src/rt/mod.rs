@@ -56,13 +56,13 @@ fn apply_light(
     };
     let is_in_shadow = any_intersection(ray, nodes);
     if is_in_shadow {
-        Vec3A::zero()
+        Vec3A::ZERO
     } else {
         let illum = light_dir.dot(normal);
         let diffuse_color = if illum > 0.0 {
             light.color * illum * AMBIENT_LIGHT
         } else {
-            Vec3A::zero()
+            Vec3A::ZERO
         };
 
         let dot = normal.dot(ray_direction);
@@ -71,7 +71,7 @@ fn apply_light(
         let specular_result = if specular > 0.0 {
             light.color * specular.powi(50)
         } else {
-            Vec3A::zero()
+            Vec3A::ZERO
         };
         diffuse_color + specular_result
     }
@@ -84,7 +84,7 @@ fn apply_lighting(
     lights: &[Light],
     ray_direction: Vec3A,
 ) -> Vec3A {
-    let mut color = Vec3A::zero();
+    let mut color = Vec3A::ZERO;
     for light in lights {
         color += apply_light(position, normal, nodes, &light, ray_direction)
     }
@@ -116,7 +116,7 @@ fn trace(ray: Ray, nodes: &[Node], lights: &[Light], depth: u32) -> Vec3A {
                 color
             }
         }
-        None => Vec3A::zero(),
+        None => Vec3A::ZERO,
     }
 }
 
@@ -167,64 +167,9 @@ fn get_lights() -> Vec<Light> {
     ]
 }
 
-
-#[inline]
-fn to_pb_color(vec: Vec3A) -> pixel_canvas::Color {
-    let rgb = vec.min(Vec3A::one()).max(Vec3A::zero()) * 255.0;
-    let (red, green, blue) = rgb.into();
-    pixel_canvas::Color {
-        r: red as u8,
-        g: green as u8,
-        b: blue as u8,
-    }
-}
-
-fn run_pixel_canvas() {
-    use pixel_canvas::{input::MouseState, Canvas, XY};
-    let canvas = Canvas::new(WIDTH, HEIGHT)
-        .title("Raytrace")
-        .state(MouseState::new())
-        .show_ms(true)
-        .input(MouseState::handle_input);
-    let num_cpus = num_cpus::get();
-    let fragment_height = HEIGHT / num_cpus;
-    let mut work: Vec<(usize, usize, usize)> = Vec::new();
-    let nodes = get_nodes();
-    let lights = get_lights();
-    for frag in 0..num_cpus {
-        work.push((WIDTH, frag * fragment_height, (frag + 1) * fragment_height));
-    }
-
-    canvas.render(move |mouse, image| {
-        let look_x = (HALF_WIDTH - mouse.x as f32) / 200f32;
-        let look_y = (HALF_HEIGHT - mouse.y as f32) / 200f32;
-        let look_at = Vec3A::new(look_x, look_y, 1f32);
-
-        let camera = Camera::create_camera(
-            CAMERA_POSITION,
-            look_at,
-            INVERSE_HEIGHT,
-            HALF_WIDTH,
-            HALF_HEIGHT,
-        );
-
-        let result = work
-            .par_iter()
-            .map(|minmax| trace_region(minmax, &camera, &nodes, &lights))
-            .collect::<Vec<_>>();
-
-        for r in result {
-            for (x, y, col) in r {
-                let color = image.index_mut(XY(x, y));
-                *color = to_pb_color(col);
-            }
-        }
-    });
-}
-
 #[inline]
 fn to_fb_color(vec: Vec3A) -> u32 {
-    let rgb = vec.min(Vec3A::one()).max(Vec3A::zero()) * 255.0;
+    let rgb = vec.min(Vec3A::new(1.0,1.0,1.0)).max(Vec3A::ZERO) * 255.0;
     let (red, green, blue) = rgb.into();
     (255 << 24) | ((red as u32) << 16) | ((green as u32) << 8) | ((blue as u32) )  
 }
